@@ -217,6 +217,10 @@ export type ServerKind = "local-embedded" | "self-hosted" | "official";
  */
 export interface License {
   plan: "free" | "pro" | "team";
+  /** Stripe subscription status verbatim (e.g. "active", "past_due"). */
+  status?: string;
+  /** ISO timestamp of the current billing period end. */
+  currentPeriodEnd?: string;
   /** ISO timestamp. Absent = unlimited / lifetime. */
   expiresAt?: string;
   /** Opaque subscription id from the billing system. Display-only. */
