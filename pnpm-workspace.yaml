@@ -1,6 +1,7 @@
-# Only the desktop app is a pnpm workspace package. `packages/shared` is
-# consumed directly as TypeScript source (via a Vite alias + tsconfig paths),
-# so it is intentionally NOT a linked workspace package - this keeps the repo
-# working on cloud-synced drives that don't support symlinks.
+# Client apps and shared packages. `packages/shared` and `packages/core` are
+# consumed as TypeScript source via Vite aliases + tsconfig paths (no build
+# step during development). They are listed here so pnpm installs their
+# devDependencies.
 packages:
   - "apps/desktop"
+  - "packages/core"

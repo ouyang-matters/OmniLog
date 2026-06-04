@@ -1,4 +1,4 @@
-import { ApiClient, type FetchLike, type ServerConfig } from "@omnilog/shared";
+import { ApiClient, type FetchLike } from "@omnilog/shared";
 import { invoke } from "@tauri-apps/api/core";
 
 /**
@@ -84,14 +84,6 @@ export const rustFetch: FetchLike = async (url, init) => {
   });
   return toResponse(resp);
 };
-
-export function createApiClient(cfg: ServerConfig): ApiClient {
-  return new ApiClient({
-    baseUrl: cfg.serverUrl,
-    token: cfg.apiToken,
-    fetch: rustFetch,
-  });
-}
 
 /**
  * Probe a server with the given URL/token without persisting anything.

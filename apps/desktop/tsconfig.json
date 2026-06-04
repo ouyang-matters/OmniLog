@@ -8,7 +8,8 @@
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "paths": {
-      "@omnilog/shared": ["../../packages/shared/src/index.ts"]
+      "@omnilog/shared": ["../../packages/shared/src/index.ts"],
+      "@omnilog/core": ["../../packages/core/src/index.ts"]
     }
   },
   "include": ["src", "vite.config.ts"]
