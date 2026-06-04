@@ -20,6 +20,12 @@ pub struct LocalServerOpts {
     pub token: String,
 }
 
+/// Platform-appropriate binary name for the bundled server.
+#[cfg(windows)]
+const SERVER_BIN: &str = "omnilog-server.exe";
+#[cfg(not(windows))]
+const SERVER_BIN: &str = "omnilog-server";
+
 /// Locate the server binary. Checks, in order:
 ///   1. The bundled Tauri resource (installed app).
 ///   2. Next to the running exe / in a `binaries` subfolder (portable build).
@@ -28,7 +34,7 @@ fn server_exe(app: &AppHandle) -> Option<PathBuf> {
     // 1. Bundled resource.
     if let Ok(p) = app
         .path()
-        .resolve("binaries/omnilog-server.exe", BaseDirectory::Resource)
+        .resolve(&format!("binaries/{SERVER_BIN}"), BaseDirectory::Resource)
     {
         if p.exists() {
             return Some(p);
@@ -39,8 +45,8 @@ fn server_exe(app: &AppHandle) -> Option<PathBuf> {
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
             for cand in [
-                dir.join("binaries/omnilog-server.exe"),
-                dir.join("omnilog-server.exe"),
+                dir.join(format!("binaries/{SERVER_BIN}")),
+                dir.join(SERVER_BIN),
             ] {
                 if cand.exists() {
                     return Some(cand);
@@ -52,9 +58,9 @@ fn server_exe(app: &AppHandle) -> Option<PathBuf> {
     // 3. Dev source tree.
     let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     [
-        manifest.join("binaries/omnilog-server.exe"),
-        manifest.join("../../server/target/release/omnilog-server.exe"),
-        manifest.join("../../server/target/debug/omnilog-server.exe"),
+        manifest.join(format!("binaries/{SERVER_BIN}")),
+        manifest.join(format!("../../server/target/release/{SERVER_BIN}")),
+        manifest.join(format!("../../server/target/debug/{SERVER_BIN}")),
     ]
     .into_iter()
     .find(|p| p.exists())
