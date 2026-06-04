@@ -5,11 +5,14 @@ and a desktop client connects to it over HTTP(S). The same binary powers both
 self-hosted instances and the (future) official hosted service — billing is
 unlocked by setting Stripe env vars; everything else is identical.
 
-- **Desktop client** — Tauri + React + TypeScript. Three editor modes (TipTap
+- **Desktop client** — Tauri 2 + React + TypeScript. Three editor modes (TipTap
   rich text, Markdown source with live preview, LaTeX source with live KaTeX
   preview). Inline formula popover, KaTeX math everywhere, folder tree with
   drag-free move/rename, multi-server connection switcher in the topbar.
-  Windows-first; structured to extend to macOS, Linux, and Web later.
+  Builds on **Windows** and **Linux** (Ubuntu LTS).
+- **Mobile client** — Tauri 2 Android target. Same shared business logic and
+  UI components as the desktop, with a mobile-tuned layout (single-column,
+  slide-out sidebar, bottom-sheet meta pane, touch-friendly controls).
 - **Server** — Rust + Axum + MongoDB (or embedded JSON storage for zero-deps
   deployments). Multi-user with `owner > admin > user` role hierarchy,
   per-folder sharing, version history with snapshot/restore, notifications
@@ -22,14 +25,39 @@ unlocked by setting Stripe env vars; everything else is identical.
 ```
 omnilog/
   apps/
-    desktop/          # Tauri + React + TypeScript client
-    server/           # Rust + Axum cross-platform server (with optional
-                      # Stripe billing for the official deployment)
+    desktop/          # Tauri 2 desktop shell (Windows + Linux)
+    mobile/           # Tauri 2 Android shell
+    server/           # Rust + Axum server (optional Stripe billing)
   packages/
-    shared/           # Shared TypeScript types, zod schemas, API client
+    shared/           # TypeScript types, zod schemas, API client
+    core/             # Framework-agnostic business logic (zustand store,
+                      # drafts engine, connection manager, theme). No Tauri
+                      # or React imports — platform deps are injected via
+                      # PlatformAdapter interface.
+    ui/               # Reusable React components (editor, settings, layout).
+                      # Consumed by desktop and mobile via CoreProvider +
+                      # PlatformUIProvider contexts.
   .env.example
   LOG.md              # Engineering log — dated journal of every change
   README.md
+```
+
+### Building each target
+
+```bash
+pnpm install                              # once, from repo root
+
+# Desktop (Windows or Linux)
+pnpm --filter @omnilog/desktop tauri build
+
+# Android
+pnpm --filter @omnilog/mobile tauri android build
+
+# Server
+cargo build --release --manifest-path apps/server/Cargo.toml
+
+# Type-check everything
+pnpm typecheck
 ```
 
 ---

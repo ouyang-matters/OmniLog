@@ -13,7 +13,7 @@ const isWin = process.platform === "win32";
 const exeName = isWin ? "omnilog-server.exe" : "omnilog-server";
 
 const outDir = join(tauriDir, "binaries");
-const outExe = join(outDir, "omnilog-server.exe"); // tauri.conf references .exe
+const outExe = join(outDir, exeName); // tauri.conf globs binaries/omnilog-server*
 
 console.log("[prepare-server] building server (release)...");
 execSync("cargo build --release", { cwd: serverDir, stdio: "inherit" });

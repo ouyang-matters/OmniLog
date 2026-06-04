@@ -4,6 +4,109 @@ A running journal of changes to OmniLog. Newest entries on top.
 
 ---
 
+## 2026-06-04 — Modularisation + Linux desktop + Android mobile
+
+### Added
+
+- **`packages/core/`** — framework-agnostic TypeScript package containing all
+  business logic previously embedded in `apps/desktop/src/`.
+  - `platform.ts`: `KVStore`, `LocalServerAdapter`, `PlatformAdapter` interfaces
+    — the host app injects platform-specific implementations.
+  - `drafts.ts`: `Draft` type + engine (create, list, cache, promote), parameterized
+    by `KVStore`. Relocated from `apps/desktop/src/lib/drafts.ts`.
+  - `config.ts`: connection management (multi-server list, migration from legacy
+    single-config, preferred port). Relocated from `apps/desktop/src/lib/config.ts`.
+  - `theme.ts`: theme persistence + `applyTheme()`. Relocated from
+    `apps/desktop/src/lib/theme.ts`.
+  - `store.ts`: `createAppStore(platform)` — the entire 900-line zustand store,
+    now a factory function using `zustand/vanilla` `createStore`. Accepts a
+    `PlatformAdapter`; zero imports from `@tauri-apps/*` or React.
+  - Exported types: `AppState`, `CoreStore`, `Draft`, `Phase`, `SaveState`, `View`,
+    `PortInUseError`, `DEFAULT_LOCAL_PORT`, `generateToken`.
+
+- **`packages/ui/`** — reusable React components consumed by all client apps.
+  - `context.ts`: `CoreProvider` (React context for the zustand store),
+    `PlatformUIProvider` (file picker, URL opener, testConnection, killPort,
+    defaultDeviceName), `useApp` hook (same API as zustand's `create()` return
+    including `.getState()` and `.setState()`), `getClient()` / `getAppState()`
+    for imperative non-React access, `registerCore()` for TipTap extensions.
+  - All 30+ React components relocated from `apps/desktop/src/components/`:
+    editor (RichEditor, LatexEditor, MarkdownEditor, Toolbar, ModeSwitcher,
+    MathDialog, InlineMathPopover, MathNode, ImageNode, imageInsert, AutoPair,
+    MathShortcuts), settings tabs (Profile, Account, Users, Server, Advanced,
+    Connections, AddConnectionDialog, Billing), layout (MainLayout, Sidebar,
+    EditorPane, MetaPane, SetupPage, SignedOutLanding, ServerSwitcher,
+    MessagesPanel, ShareModal, HistoryModal, FolderPicker, SettingsPage), icons.
+  - Platform-specific operations (file picker in `imageInsert.ts`, testConnection
+    in SetupPage/AddConnectionDialog, killPort in SetupPage) now go through
+    `PlatformUI` context — no Tauri imports in the shared layer.
+  - `SetupPage` conditionally hides the "one-click local server" section when
+    `hasLocalServer` is false (i.e. on mobile).
+
+- **`apps/mobile/`** — Tauri 2 Android client.
+  - `platform.ts`: mobile `PlatformAdapter` — `@tauri-apps/plugin-store` for KV,
+    native `fetch` for HTTP (no Rust proxy needed on Android), no `localServer`.
+  - `shell.ts`: `createAppStore(mobilePlatform)`, `registerCore()`,
+    `mobilePlatformUI` with `tauri-plugin-opener` for external URLs.
+  - `App.tsx` / `main.tsx`: same structure as desktop, wraps shared components
+    with `CoreProvider` + `PlatformUIProvider`.
+  - `styles.css`: imports the desktop stylesheet then overrides layout for mobile
+    (single-column, slide-out sidebar, bottom-sheet meta pane, wider touch
+    targets, horizontal-scroll toolbar).
+  - Tauri shell: `tauri-plugin-store` + `tauri-plugin-opener` (no dialog, no
+    local server, no reqwest).
+
+- **Linux desktop support** — same `apps/desktop/` builds on Ubuntu LTS:
+  - `tauri.conf.json`: bundle resource glob `binaries/omnilog-server*`.
+  - `local_server.rs`: `SERVER_BIN` const is `omnilog-server.exe` on Windows,
+    `omnilog-server` on Linux (`#[cfg(windows)]` / `#[cfg(not(windows))]`).
+  - `prepare-server.mjs`: copies the platform-appropriate binary name.
+
+### Changed
+
+- **`apps/desktop/`** is now a thin Tauri shell (~10 source files):
+  - `platform.ts`: assembles a `PlatformAdapter` from Tauri invoke + plugin-store.
+  - `shell.ts`: creates the core store + `PlatformUI` (file picker via Tauri
+    dialog, `read_file_bytes` invoke, rustFetch-backed testConnection).
+  - `App.tsx`: wraps `@omnilog/ui` components with `CoreProvider` +
+    `PlatformUIProvider`.
+  - `store/appStore.ts`, `lib/drafts.ts`, `lib/config.ts`, `lib/theme.ts`:
+    backward-compat re-export shims.
+  - `lib/api.ts`: kept `rustFetch` (Tauri invoke → Rust reqwest) + `testConnection`.
+  - `lib/localServer.ts`: kept `killPort`, `defaultDeviceName`, re-exports
+    `PortInUseError` / `DEFAULT_LOCAL_PORT` from core.
+  - `lib/store.ts`: deleted (absorbed into `platform.ts`).
+  - `src/components/`, `src/assets/icons/`: deleted (now in `packages/ui/src/`).
+
+- **`pnpm-workspace.yaml`**: added `packages/core`, `packages/ui`, `apps/mobile`.
+- **Root `package.json`**: added `dev:mobile`, `build:mobile`, `tauri:mobile`
+  scripts; `typecheck` now runs `pnpm -r --parallel typecheck`.
+- **README**: updated repo layout, added build instructions for each target.
+
+### Notes
+
+- The three client apps share ≥80% of the TypeScript code. `packages/core` +
+  `packages/ui` contain all business logic and React components; the host apps
+  are <10 files each (platform adapter + context wiring + entry point).
+- `packages/shared`, `packages/core`, and `packages/ui` are consumed as
+  TypeScript source via Vite aliases + tsconfig paths — no build step for the
+  shared packages during development. This is the same pattern the codebase
+  already used for `@omnilog/shared`.
+- Pre-existing type errors in `BillingTab.tsx` (the `License` type in
+  `packages/shared/src/types.ts` doesn't include `status` / `currentPeriodEnd`
+  fields that the server's License model has) are unchanged. These need the
+  shared `License` type to be extended, but that's a separate fix.
+- `apps/server/` is untouched — no server-side changes in this round.
+- Mobile CSS imports the full desktop stylesheet then overrides layout.
+  A future pass could extract shared CSS variables into `packages/ui/` and
+  keep only layout-specific styles in each app.
+- The Android WebView uses native `fetch` rather than the Rust reqwest proxy
+  the desktop uses. Tauri 2's Android transport handles this correctly. If
+  CORS issues surface with self-hosted servers, adding the Rust proxy to
+  the mobile Tauri shell is a one-file change.
+
+---
+
 ## 2026-06-04 — Repository initialised + first commit
 
 ### Added
