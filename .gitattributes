@@ -1,0 +1,22 @@
+# Force LF line endings for text files in the repo, regardless of the OS that
+# the contributor is on. Combined with `core.autocrlf=true` on Windows clients,
+# this means working trees can use CRLF locally while the repo stays clean.
+* text=auto eol=lf
+
+# Binary files — never touch.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.icns binary
+*.pdf binary
+*.zip binary
+*.exe binary
+*.dll binary
+*.msi binary
+*.so binary
+*.dylib binary
+*.woff binary
+*.woff2 binary

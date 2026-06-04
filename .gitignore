@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# Rust
+target/
+**/target/
+
+# Tauri
+apps/desktop/src-tauri/gen/
+apps/desktop/src-tauri/binaries/
+
+# Release artifacts (publish via GitHub Releases instead of source tree)
+installers/
+portable/
+
+# Server runtime data (assets, exports, logs, embedded DB)
+server_data/
+apps/server/server_data/
+
+# Environment — never commit secrets. `.env.example` is the canonical template
+# and is committed.
+.env
+.env.local
+*.local
+
+# Logs
+*.log
+logs/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json

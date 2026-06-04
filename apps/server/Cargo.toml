@@ -1,0 +1,57 @@
+[package]
+name = "omnilog-server"
+version = "0.1.0"
+edition = "2021"
+description = "OmniLog self-hosted server - cross-platform Axum + MongoDB REST API"
+license = "MIT"
+
+[[bin]]
+name = "omnilog-server"
+path = "src/main.rs"
+
+[dependencies]
+axum = { version = "0.7", features = ["multipart", "macros"] }
+tokio = { version = "1", features = ["full"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors", "trace", "compression-full", "limit"] }
+
+mongodb = "3"
+bson = { version = "2", features = ["chrono-0_4"] }
+futures = "0.3"
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-appender = "0.2"
+
+dotenvy = "0.15"
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+anyhow = "1"
+thiserror = "2"
+async-trait = "0.1"
+
+# Auth (multi-user)
+argon2 = "0.5"
+jsonwebtoken = "9"
+rand = "0.8"
+
+# Image decoding for width/height metadata on upload.
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "webp"] }
+# Content hashing for assets/entries; HMAC for Stripe webhook signatures.
+sha2 = "0.10"
+hmac = "0.12"
+hex = "0.4"
+mime_guess = "2"
+
+# Outbound HTTP client for the Stripe API. rustls so we don't need OpenSSL on
+# the host. Only pulled in when the binary is built; the billing module sees
+# zero overhead at runtime if STRIPE_SECRET_KEY is unset.
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+urlencoding = "2"
+
+[profile.release]
+opt-level = 2

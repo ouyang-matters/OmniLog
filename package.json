@@ -1,0 +1,22 @@
+{
+  "name": "omnilog",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OmniLog - a self-hosted-first work journal (Tauri + React + Axum + MongoDB)",
+  "license": "MIT",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "@tauri-apps/cli"]
+  },
+  "scripts": {
+    "dev:desktop": "pnpm --filter @omnilog/desktop dev",
+    "build:desktop": "pnpm --filter @omnilog/desktop build",
+    "tauri": "pnpm --filter @omnilog/desktop tauri",
+    "dev:server": "cargo run --manifest-path apps/server/Cargo.toml",
+    "build:server": "cargo build --release --manifest-path apps/server/Cargo.toml",
+    "typecheck": "pnpm --filter @omnilog/desktop typecheck"
+  }
+}

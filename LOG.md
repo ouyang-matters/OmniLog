@@ -1,0 +1,187 @@
+# Engineering Log
+
+A running journal of changes to OmniLog. Newest entries on top.
+
+---
+
+## 2026-06-04 — Repository initialised + first commit
+
+### Added
+- `.gitattributes` locking text files to LF on disk regardless of the
+  contributor's OS — Windows checkouts can still use CRLF in the working
+  tree via `core.autocrlf`.
+
+### Changed
+- `.gitignore`: added `installers/` and `portable/` (~50 MB of build
+  artifacts — these belong in GitHub Releases, not source tree).
+- Deleted the duplicate, out-of-date `apps/server/.env.example` — the root
+  `.env.example` is canonical and now includes the Stripe block.
+- README brought up to date: opening blurb reflects multi-mode editor,
+  multi-server connections and the optional billing layer; env-vars list
+  includes the Stripe block; the MVP checklist is replaced with a current
+  Feature checklist split by editor / workspace / identity / connections /
+  server. Points readers at LOG.md for the engineering journal.
+
+### Notes
+- `git init` performed at the repo root using the existing global git identity.
+- 164 files in the initial commit — `node_modules/`, `target/`,
+  `server_data/`, `installers/`, `portable/`, and every `.env*` (except
+  `.env.example`) are excluded by `.gitignore`.
+- No secrets in the staged files: the only `password = "..."` matches are
+  the documented `admin` default in `config.rs` and React `useState("")`
+  hooks.
+- Repo is still **on Google Drive**. Drive's background sync occasionally
+  races with git on `.git/index.lock`. If that ever surfaces, pause Drive
+  → `git fsck` → re-resume; or move the working tree off Drive entirely
+  (GitHub becomes the authoritative copy once we push).
+
+---
+
+## 2026-06-04 — Official server: Stripe billing end-to-end
+
+### Added
+- **Stripe wrapper** ([apps/server/src/billing/stripe.rs](apps/server/src/billing/stripe.rs)) — hand-rolled on `reqwest` + `hmac` (deliberately avoiding `async-stripe`'s huge types tree). Covers the four operations we need: create customer, create Checkout session, create Customer Portal session, fetch subscription. Plus `verify_webhook_signature` doing the HMAC-SHA256 over `<timestamp>.<raw body>` Stripe expects, with a ±5-minute replay window.
+- **`License` model** ([apps/server/src/models/license.rs](apps/server/src/models/license.rs)) — one row per user, keyed on `_id = user_id`. Carries `plan` (free/pro/team), `status` (Stripe verbatim), `currentPeriodEnd`, `stripeCustomerId`, `subscriptionId`, derived `features`. `features_for_plan()` lives next to it.
+- **Storage trait** gets `upsert_license`, `get_license`, `get_license_by_customer` (latter is for webhook routing by Stripe customer id). Implemented in both Json + Mongo; Mongo gets a `stripeCustomerId` index.
+- **Routes** ([apps/server/src/routes/billing.rs](apps/server/src/routes/billing.rs)):
+  - `GET /api/auth/license` — auth-required, returns the caller's License row (synthesises a free row if none stored). 404s on billing-disabled servers so the client falls through to the free experience.
+  - `POST /api/billing/checkout` — auth-required, creates a Stripe Checkout session for `{plan: "pro" | "team"}`, returns the URL to open.
+  - `POST /api/billing/portal` — auth-required, opens a Customer Portal session for cancel/change-plan/update-card.
+  - `POST /api/billing/webhook` — public-but-signature-verified. Subscribes to `customer.subscription.created/updated/deleted` and `checkout.session.completed`; re-fetches the canonical subscription and writes back the License. Surfaces a notification in the user's inbox on every state change.
+- **Config** (`config.rs`): `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PRO`, `STRIPE_PRICE_TEAM`, `BILLING_RETURN_URL`. New helpers `billing_enabled()` + `stripe_price_for(plan)`. `.env.example` updated with the full block + commentary.
+- **Cargo.toml**: `reqwest` (rustls-tls, json, no default features), `hmac`, `urlencoding`.
+- **Bootstrap admin** (`main.rs`) now creates the initial user as `role: "owner"` (was `"admin"`) so password login + API_TOKEN auth give matching powers.
+- **Frontend `BillingTab`** ([apps/desktop/src/components/settings/BillingTab.tsx](apps/desktop/src/components/settings/BillingTab.tsx)) — only mounted when the active connection is `kind === "official"`. Shows current plan + status + period end + features; three plan cards (Free, Pro, Team) with Subscribe / Change buttons that call `startCheckout` and open the returned URL in the OS browser (`window.open(_, "_blank")` — Tauri shells external links to the default browser). "Manage subscription" calls `openCustomerPortal`.
+- **API client**: `startCheckout(plan)`, `openCustomerPortal()`, `API_ROUTES.billingCheckout` / `.billingPortal`.
+
+### Changed
+- Bootstrap admin role: `"admin"` → `"owner"` to match the static-token principal's hardcoded "owner" in `auth.rs`.
+
+### Notes
+- **Self-hosted instances are not affected.** `STRIPE_SECRET_KEY` empty ⇒ `billing_enabled()` false ⇒ every `/api/billing/*` and `/api/auth/license` 404 ⇒ client treats this as "no license info" (already wired in the previous session).
+- **Wiring it up on the official deployment, in env terms:**
+  - `STRIPE_SECRET_KEY=sk_live_...` (or `sk_test_...`)
+  - `STRIPE_WEBHOOK_SECRET=whsec_...` from the Webhook endpoint registered at `https://<host>/api/billing/webhook`
+  - `STRIPE_PRICE_PRO=price_...` and `STRIPE_PRICE_TEAM=price_...` for the products
+  - `BILLING_RETURN_URL=https://app.omnilog.example.com` (where Stripe redirects after Checkout — both success and cancel bounce here)
+- **Webhook signature** is HMAC-SHA256 over `"<timestamp>.<raw bytes>"` against `STRIPE_WEBHOOK_SECRET`. The handler takes `Bytes` (NOT `Json`) so the body isn't mutated by Axum's JSON extractor — Stripe signs the exact bytes received.
+- The bootstrap principal (DEFAULT_USER_ID) can NOT subscribe — they're the operator, not a tenant. `/api/billing/checkout` rejects them with a clear 400. `GET /api/auth/license` for them returns an implicit free license without persisting a row.
+- Free tier is implicit: anyone with no license row gets `default_free()`. We only persist a row once Stripe customer creation succeeds.
+- The webhook acks `200 {"received": true}` to every event so Stripe doesn't retry — even for events we ignore (`invoice.paid`, `customer.created`, etc.).
+- BillingTab is only visible when the active connection's `kind === "official"`. Self-hosted users never see it; admins on official deployments do see it (they can still subscribe individually).
+- No `cargo build` / `pnpm typecheck` this session — battery saving per standing instruction. Things worth verifying on next plug-in: webhook signature against a real Stripe CLI replay, checkout-flow round-trip with a test card.
+
+---
+
+## 2026-06-04 — Multi-connection client + official-server scaffolding
+
+### Added
+- **`ServerConnection` + `License` types** ([packages/shared/src/types.ts](packages/shared/src/types.ts)) — a connection is `{ id, name, kind: "local-embedded" | "self-hosted" | "official", serverUrl, apiToken, deviceName, managedLocal?, lastConnectedAt?, license? }`. `License` carries `plan: "free" | "pro" | "team"`, optional `expiresAt`, `subscriptionId`, `features` — reserved for when the hosted service ships.
+- **Connections list in storage** ([lib/config.ts](apps/desktop/src/lib/config.ts)) — `loadConnections()` / `saveConnections()` keep a `Record<id, ServerConnection>` plus the `activeConnectionId`. Legacy single `serverConfig` key is auto-migrated on first read.
+- **appStore actions** — `addConnection`, `renameConnection`, `removeConnection`, `switchConnection`, plus a `connections` array + `activeConnectionId`. `config` is still exposed but is now a derived view of the active connection. `signOut` now detaches from the active connection while **keeping** the saved row (so the user can re-connect later); `resetConfig` is the nuclear wipe.
+- **Topbar server switcher** ([ServerSwitcher.tsx](apps/desktop/src/components/ServerSwitcher.tsx)) — chip showing the active connection name + kind + online dot. Click drops a menu listing all saved servers and a "Manage connections…" deep-link to the new settings tab.
+- **Settings → Connections tab** ([settings/ConnectionsTab.tsx](apps/desktop/src/components/settings/ConnectionsTab.tsx)) — list, set active, rename, remove, plus "+ Add server" → `AddConnectionDialog`.
+- **AddConnectionDialog** — in-app modal for adding a self-hosted server (URL + API token *or* username/password) without going through the first-run SetupPage. Official server option is present but gated as "Coming soon".
+- **SignedOutLanding** ([SignedOutLanding.tsx](apps/desktop/src/components/SignedOutLanding.tsx)) — replaces the bare SetupPage when the user has signed out but still has saved connections. Pick one to reconnect, remove, or add a new one.
+- **License fetch on `loadMe`** — for `official` connections only, the client tries `GET /api/auth/license` and stores the result on the connection record. Self-hosted servers 404 (no endpoint yet) — silently ignored. Display: a small plan badge (`free` / `pro` / `team`) in the Connections tab.
+- **API client**: `ApiClient.getLicense()` and `API_ROUTES.license`.
+
+### Changed
+- `init()`, `completeSetup()`, `signOut()`, `resetConfig()` rewritten around the connections list. `completeSetup()` now routes through `addConnection({activate: true})`.
+- `App.tsx` picks the signed-out landing based on whether any connection is saved: empty → `SetupPage` (first-run), non-empty → `SignedOutLanding`.
+- `loadServerConfig`, `saveServerConfig`, `isConfigUsable` in [lib/config.ts](apps/desktop/src/lib/config.ts) are marked `@deprecated` shims kept as a transitional surface — they read/write the active connection via the new APIs.
+- Topbar gets a `topbar-left` wrapper so the brand and switcher sit together on the left, settings/messages/avatar remain on the right.
+
+### Notes
+- One client can only manage **one** local server at a time (port + bundled binary). `quickStartLocalServer` deduplicates by `(serverUrl, kind)` so re-running it overwrites the existing local entry instead of creating a duplicate.
+- Switching connections wipes the editor's in-memory state (entries, current draft, folders, messages, me) — they belong to the previous server. Dirty local drafts are still kept by the drafts cache keyed on entry id; if you switch back to the originating server they'll show up dirty again.
+- The official-server connection is reserved but **disabled at the UI level** (Coming soon). All the data plumbing is ready: the moment the hosted service ships, drop the disable and `getLicense()` will start returning a plan.
+- README continues to be out of date — the connections list and multi-server flow aren't documented there yet.
+- No `cargo build` / `pnpm typecheck` run this session — battery saving.
+
+---
+
+## 2026-06-04 — Settings as a page + `owner` role + profile + advanced tab
+
+### Added
+- **`owner` role** above `admin` in the role hierarchy (`owner > admin > user`). The bootstrap principal (API_TOKEN authentication) now reports as `owner` instead of `admin`. `AuthUser::is_owner()` helper; `users.rs` enforces a rank check on every edit (caller must outrank the target unless editing self; promoting to admin/owner requires owner).
+- **User profile fields** — `display_name` and `avatar_data_url` on `User` / `PublicUser`. Avatar stored as a `data:image/...` URL, capped at 256 KB. New `PATCH /api/auth/me` for self-service edits. Bootstrap principal is rejected with a clear 400 (no stored row to update).
+- **Owner-only `/api/admin/server-info` (GET + PATCH)** — returns build version, host, port, data_dir, embedded-vs-Mongo flag, database name, masked Mongo URI, env-bound CORS, runtime CORS override, public-URL note, total user count, and whether the call came from the static token. PATCH accepts `corsOrigin` + `publicUrl` overrides stored in the settings collection.
+- **`SettingsPage`** ([`SettingsPage.tsx`](apps/desktop/src/components/SettingsPage.tsx)) — full-screen replacement for the old `SettingsModal`. Left tab list, right content pane. Tabs: **Profile**, **Account**, **Users** (admin/owner), **Server**, **Advanced** (owner only). Esc returns to editor.
+- **`ProfileTab`** — display-name + avatar upload. File picker → reads as data URL → preview before save. Includes a shared `AvatarFrame` component (image or coloured initial fallback) reused by topbar / Users tab.
+- **`AccountTab`** — change password + Sign-out (moved out of the gear modal).
+- **`UsersTab`** — list + create + edit role + edit display name + reset password + delete. Honors the role hierarchy (rank-equal targets are non-editable; admin/owner options disabled when caller isn't owner).
+- **`ServerTab`** — version-history toggle + connection info.
+- **`AdvancedTab`** — owner-only. Renders the server-info dashboard plus editable CORS allowlist and public-URL note. Yellow alert when the save reports `restartRequired`.
+- **Topbar avatar button** in `MainLayout` opens the settings page (replaces the gear icon).
+- appStore: `view` state (`editor | settings`), `openSettings` / `closeSettings`, `updateProfile`.
+
+### Changed
+- `SettingsModal.tsx` deleted; all consumers point at `SettingsPage`.
+- `MainLayout` no longer renders any settings modal; just calls `openSettings()` from the topbar.
+- API client: `me`, `createUser`, `updateUser` now take/return `Role` (the new union) and the profile fields. New: `updateMe`, `getServerInfo`, `updateServerInfo`.
+- `auth::authenticate` issues `role = "owner"` for the API_TOKEN principal (was `"admin"`).
+- Users.list endpoint still returns everyone; bootstrap principal has no stored row so it never appears.
+
+### Notes
+- **Avatars are inlined into every user response.** Fine for personal-scale (cap is 256 KB) but the `users.list` / share-modal payloads grow linearly. If the deployment ever hits dozens of users, swap to a dedicated `GET /api/users/:id/avatar` endpoint serving the bytes.
+- **CORS override is stored but not live-applied** — the CORS layer is built at server startup. PATCH returns `restartRequired: true` so the UI can warn the operator.
+- **`MONGODB_URI`, `MONGODB_DB`, `PORT`, `HOST`, `DATA_DIR` are read-only in the UI**, by design — changing them at runtime would mean dropping in-flight Mongo connections and revalidating the data dir, which we'd rather not do behind a button. Owner sees the current values and is expected to edit the `.env` + restart.
+- Old user rows from before this session don't have `role` matching the new enum — they'll still deserialize because `role` is just `String` server-side. They'll show in the UI as whatever their old role string was. If you had `"admin"` users, they remain admins. The bootstrap is the only `owner` until you promote someone.
+- No `cargo build` / `pnpm typecheck` run this session — battery save. Worth manually verifying on next plug-in: the role-rank guard on PATCH /users/:id, avatar round-trip, and the Advanced tab's CORS override.
+
+## 2026-06-04 — Folder UX + multi-mode editor + inline math popover
+
+### Added
+- **Editor modes** — Entry has a new `mode` field (`"rich" | "latex" | "markdown"`, default `"rich"`). Mirrored across `Entry`, `Version`, `CreateEntryInput`, `UpdateEntryInput` server-side; `WorklogEntry`, `EntryVersion`, `entryModeSchema`, `Draft` client-side.
+- **Pure LaTeX editor** ([`LatexEditor.tsx`](apps/desktop/src/components/editor/LatexEditor.tsx)) — textarea + live KaTeX preview. Splits paragraphs on blank lines; `$…$` inline, `$$…$$` block. Tab inserts two spaces.
+- **Pure Markdown editor** ([`MarkdownEditor.tsx`](apps/desktop/src/components/editor/MarkdownEditor.tsx)) — textarea + live HTML preview. Self-contained minimal parser (no new deps) handling headings, lists, blockquotes, fenced code, HR, bold/italic/strike/inline-code, links, images, plus inline `$…$` / block `$$…$$` math.
+- **Inline math popover** ([`InlineMathPopover.tsx`](apps/desktop/src/components/editor/InlineMathPopover.tsx)) — small floating editor anchored under the inline math node; live KaTeX preview; Enter commits, Esc cancels, click-outside saves. Freshly-inserted empty nodes are removed on cancel.
+- **Mode switcher** ([`ModeSwitcher.tsx`](apps/desktop/src/components/editor/ModeSwitcher.tsx)) — segmented Rich / Markdown / LaTeX control at the top of the editor pane.
+- **Folder rename / move UI** — Sidebar shows ✎ / ↕ / × buttons on each owned folder row, and on the breadcrumb for the current folder. Entry rows hover-reveal a "move to" button.
+- **`FolderPicker.tsx`** — modal indented-tree folder selector. Auto-excludes the moved folder + its descendants to prevent cycles. Used by both folder-move and entry-move flows.
+- **MetaPane Folder section** — shows the current folder name and a "Move…" button so the user can re-file an open entry without leaving the editor.
+- **appStore actions** — `renameFolder`, `moveFolder`, `moveEntry`, `setMode`.
+
+### Changed
+- **`EditorPane.tsx` refactored** — now just title input + mode switcher + dispatch. Rich-text logic moved into [`RichEditor.tsx`](apps/desktop/src/components/editor/RichEditor.tsx) so `useEditor` is only called when rich mode is mounted.
+- **Block vs inline math routing** — block formulas (incl. `$$` shortcut) go to `MathDialog`; inline formulas go to the new `InlineMathPopover`. `MathDialog` kept for blocks because of the template buttons + larger area.
+- **Version snapshot** — `Version` now carries `mode`, so restoring an older snapshot also restores the editor mode it was authored in.
+- **Folder list endpoint** — already returned `FolderView` since the morning session; this afternoon's UI now uses `myRole` to gate the rename/move/share buttons.
+
+### Notes
+- Switching from rich to a source mode prompts a confirm because rich JSON gets wiped (source modes own `contentText`).
+- Latex/Markdown editors still write a single-paragraph `contentJson` wrap so server-side search/export keep working.
+- `MarkdownEditor` placeholder uses Private-Use-Area chars (U+E000/E001) to keep inline code/math from being re-parsed by the formatting pass.
+- No `cargo build` / `pnpm typecheck` run this session — user is on battery, will verify next time plugged in. Anything that needs verification: source-mode editors round-tripping, popover anchoring math under the right node.
+
+---
+
+## 2026-06-04 — Multi-user system + sharing + notifications inbox
+
+### Added
+- `POST /api/auth/change-password` — self-service password change. Bootstrap admin (API_TOKEN principal) is rejected with a hint to rotate `API_TOKEN` env var.
+- `PATCH /api/users/:id` — admin: change role and/or reset password. Blocks self-demotion and edits to the bootstrap admin.
+- `DELETE /api/users/:id` — admin only. Drops every share granted *to* the deleted user; the user's own folders/entries are kept.
+- `PATCH /api/folders/:id/shares/:userId` — owner: change a share's role without removing it. New `update_share_role` on the storage trait (Json + Mongo).
+- **Notifications system** — new `Message` model + `/api/messages*` routes (list / mark-read / mark-all-read / delete). Hooks enqueue messages on share add, share remove, role change, folder rename, folder delete, admin user-update, password change.
+- **FolderView** — `GET /api/folders` augments each folder with `myRole` + (for shared folders) `ownerUsername` so the UI can label "shared with you" and gate owner-only actions.
+- **Frontend**
+  - `SettingsModal` — Change-password form, Sign-out button (renamed from "Disconnect / Reset"), admin Users panel (list / role-change / reset-password / delete / add).
+  - `ShareModal` — role is an inline `<select>` that PATCHes on change; remove button uses trash icon.
+  - `Sidebar` — shared folders show `folderShared` icon + `@username`; current folder shows "shared" badge and hides the Share button when caller isn't owner.
+  - `MessagesPanel` — anchored under a bell icon in the topbar; unread badge; click-to-jump to the linked folder; mark all read / dismiss buttons. 60-second background poll while online.
+  - `appStore` — `me`, `messages` state; actions `signOut`, `changePassword`, `loadMe`, `loadMessages`, `markMessageRead`, `markAllMessagesRead`, `deleteMessage` (all optimistic).
+  - New icons: `bell`, `users`, `key`, `logout`, `trash`, `folderShared`.
+
+### Changed
+- Auth boundary unchanged: static `API_TOKEN` still maps to `DEFAULT_USER_ID = "local-user"` and works alongside JWT.
+- `Share.create` now rejects sharing back to the folder owner (was a silent no-op).
+- `folders.update` triggers `folder.renamed` notifications to every share recipient when the name changes.
+- `folders.delete` notifies recipients with `folder.deleted` and revokes their shares before deleting the folder.
+
+### Notes
+- The Mongo `shares` collection still lacks a unique index on `(folderId, userId)` — duplicates are possible if `add_share` is called twice for the same pair. Pre-existing; left alone this session.
+- Shared folders whose parent isn't shared with the recipient don't surface under any visible parent in the Sidebar tree. Pre-existing; surfaces more visibly now that shared folders are first-class.
+- Repo still has **no `.git`**. Highest-priority cleanup. Working tree backed up only by Google Drive sync.
+- README at repo root is now significantly out of date — claims single-token auth, no multi-user, no sharing, no notifications, no source-mode editors.
