@@ -17,6 +17,9 @@ export default defineConfig({
       "@omnilog/core": fileURLToPath(
         new URL("../../packages/core/src/index.ts", import.meta.url),
       ),
+      "@omnilog/ui": fileURLToPath(
+        new URL("../../packages/ui/src/index.ts", import.meta.url),
+      ),
     },
   },
   // Prevent Vite from obscuring Rust errors.
