@@ -6,3 +6,4 @@ packages:
   - "apps/desktop"
   - "packages/core"
   - "packages/ui"
+  - "apps/mobile"
