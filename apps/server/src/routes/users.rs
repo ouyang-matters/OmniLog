@@ -76,6 +76,8 @@ pub async fn create(
         created_at: now_rfc3339(),
         display_name: input.display_name.filter(|s| !s.trim().is_empty()),
         avatar_data_url: None,
+        email: None,
+        email_verified: false,
     };
     state.storage.create_user(&user).await?;
     Ok(Json(PublicUser::from(&user)))

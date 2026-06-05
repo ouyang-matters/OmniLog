@@ -1,10 +1,3 @@
-/**
- * Desktop draft persistence — implements DraftStore via the Tauri Store plugin.
- * Pure draft logic (types, helpers) lives in @omnilog/shared.
- *
- * This module re-exports the shared helpers and wraps the store-dependent
- * functions so callers don't need to pass the store instance every time.
- */
 import type { DraftStore, Draft } from "@omnilog/shared";
 import {
   isLocalId as _isLocalId,
@@ -22,14 +15,12 @@ import { getStore } from "./store";
 
 export type { Draft } from "@omnilog/shared";
 
-// Pure helpers — re-export directly
 export const isLocalId = _isLocalId;
 export const newLocalId = _newLocalId;
 export const entryToDraft = _entryToDraft;
 
 const DRAFTS_KEY = "drafts";
 
-/** Tauri Store–backed DraftStore. */
 const store: DraftStore = {
   async readAll(): Promise<Record<string, Draft>> {
     const s = await getStore();
@@ -42,7 +33,6 @@ const store: DraftStore = {
   },
 };
 
-// Store-bound wrappers — same signatures as before
 export const listDrafts = () => _listDrafts(store);
 export const getDraft = (id: string) => _getDraft(store, id);
 export const saveDraft = (draft: Draft) => _saveDraft(store, draft);

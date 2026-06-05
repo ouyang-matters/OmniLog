@@ -28,6 +28,16 @@ pub struct Config {
     /// Base URL clients are redirected back to after Stripe Checkout (success
     /// and cancel both bounce here). Defaults to the OmniLog API origin.
     pub billing_return_url: String,
+
+    // --- Registration ---
+    /// Whether public user self-registration is enabled. When false, only
+    /// admins can create accounts (self-hosted default). Set to `true` for the
+    /// official hosted service.
+    pub registration_enabled: bool,
+
+    /// Base URL for links in emails (verification, password reset).
+    /// e.g. "https://app.omnilog.io" or "http://localhost:1420"
+    pub public_url: String,
 }
 
 impl Config {
@@ -49,6 +59,10 @@ impl Config {
         let stripe_price_pro = env_or("STRIPE_PRICE_PRO", "");
         let stripe_price_team = env_or("STRIPE_PRICE_TEAM", "");
         let billing_return_url = env_or("BILLING_RETURN_URL", "");
+        let registration_enabled = env_or("REGISTRATION_ENABLED", "false")
+            .parse::<bool>()
+            .unwrap_or(false);
+        let public_url = env_or("PUBLIC_URL", "");
 
         Ok(Self {
             port,
@@ -65,6 +79,8 @@ impl Config {
             stripe_price_pro,
             stripe_price_team,
             billing_return_url,
+            registration_enabled,
+            public_url,
         })
     }
 

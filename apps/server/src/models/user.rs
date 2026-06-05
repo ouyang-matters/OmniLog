@@ -21,6 +21,12 @@ pub struct User {
     /// the user record — fine for small personal deployments.
     #[serde(default)]
     pub avatar_data_url: Option<String>,
+    /// Email address (used for self-registration + password reset).
+    #[serde(default)]
+    pub email: Option<String>,
+    /// Whether the email has been verified.
+    #[serde(default)]
+    pub email_verified: bool,
 }
 
 impl User {
@@ -41,6 +47,9 @@ pub struct PublicUser {
     pub display_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avatar_data_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub email: Option<String>,
+    pub email_verified: bool,
 }
 
 impl From<&User> for PublicUser {
@@ -52,6 +61,8 @@ impl From<&User> for PublicUser {
             created_at: u.created_at.clone(),
             display_name: u.display_name.clone(),
             avatar_data_url: u.avatar_data_url.clone(),
+            email: u.email.clone(),
+            email_verified: u.email_verified,
         }
     }
 }
@@ -102,4 +113,38 @@ pub struct UpdateMeInput {
 pub struct ChangePasswordInput {
     pub old_password: String,
     pub new_password: String,
+}
+
+/// Self-registration input (public, rate-limited).
+#[derive(Debug, Deserialize)]
+pub struct RegisterInput {
+    pub username: String,
+    pub email: String,
+    pub password: String,
+}
+
+/// Forgot-password input — just the email.
+#[derive(Debug, Deserialize)]
+pub struct ForgotPasswordInput {
+    pub email: String,
+}
+
+/// Reset-password input — token from email + new password.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResetPasswordInput {
+    pub token: String,
+    pub new_password: String,
+}
+
+/// A short-lived token for email verification or password reset.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AuthToken {
+    #[serde(rename = "_id")]
+    pub token: String,
+    pub user_id: String,
+    /// `"verify_email"` or `"reset_password"`.
+    pub kind: String,
+    pub expires_at: String,
 }

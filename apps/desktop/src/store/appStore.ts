@@ -12,7 +12,7 @@ import type {
 } from "@omnilog/shared";
 import { ApiClient as ApiClientClass } from "@omnilog/shared";
 import { createApiClient, rustFetch } from "../lib/api";
-import { sourceToDoc } from "../components/editor/sourceConvert";
+import { sourceToDoc, docToMarkdown, docToLatex } from "../components/editor/sourceConvert";
 import {
   connectionToConfig,
   getDeviceId,
@@ -667,18 +667,26 @@ export const useApp = create<AppState>((set, get) => ({
   setMode(mode) {
     const cur = get().current;
     if (!cur || cur.mode === mode) return;
-    // Switching INTO rich from a source mode converts the Markdown/LaTeX source
-    // into a real rich document (headings, lists, emphasis, math nodes) so the
-    // content syncs across modes instead of being discarded. markdown<->latex
-    // keep the same source text.
-    const contentJson =
-      mode === "rich" && (cur.mode === "markdown" || cur.mode === "latex")
-        ? sourceToDoc(cur.mode, cur.contentText)
-        : cur.contentJson;
+
+    let { contentJson, contentText } = cur;
+
+    if (mode === "rich" && (cur.mode === "markdown" || cur.mode === "latex")) {
+      // Source → Rich: parse source into a ProseMirror document.
+      contentJson = sourceToDoc(cur.mode, contentText);
+    } else if (cur.mode === "rich" && mode !== "rich") {
+      // Rich → Source: serialize ProseMirror doc back to source text.
+      contentText =
+        mode === "markdown"
+          ? docToMarkdown(contentJson)
+          : docToLatex(contentJson);
+    }
+    // Markdown ↔ LaTeX: contentText is shared as-is.
+
     const next: Draft = {
       ...cur,
       mode,
       contentJson,
+      contentText,
       updatedAt: new Date().toISOString(),
       dirty: true,
     };

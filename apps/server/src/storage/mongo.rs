@@ -13,7 +13,7 @@ use crate::models::folder::Folder;
 use crate::models::license::License;
 use crate::models::message::Message;
 use crate::models::share::Share;
-use crate::models::user::User;
+use crate::models::user::{AuthToken, User};
 use crate::models::version::Version;
 
 use super::Storage;
@@ -75,6 +75,10 @@ impl MongoStorage {
 
     fn licenses(&self) -> Collection<License> {
         self.database.collection::<License>("licenses")
+    }
+
+    fn auth_tokens(&self) -> Collection<AuthToken> {
+        self.database.collection::<AuthToken>("auth_tokens")
     }
 
     async fn ensure_indexes(&self) -> anyhow::Result<()> {
@@ -319,6 +323,10 @@ impl Storage for MongoStorage {
         Ok(self.users().find_one(doc! { "username": username }).await?)
     }
 
+    async fn get_user_by_email(&self, email: &str) -> AppResult<Option<User>> {
+        Ok(self.users().find_one(doc! { "email": email }).await?)
+    }
+
     async fn list_users(&self) -> AppResult<Vec<User>> {
         let cursor = self.users().find(doc! {}).sort(doc! { "username": 1 }).await?;
         Ok(cursor.try_collect().await?)
@@ -458,5 +466,28 @@ impl Storage for MongoStorage {
             .licenses()
             .find_one(doc! { "stripeCustomerId": customer_id })
             .await?)
+    }
+
+    // --- Auth tokens ---
+
+    async fn insert_auth_token(&self, token: &AuthToken) -> AppResult<()> {
+        self.auth_tokens().insert_one(token).await?;
+        Ok(())
+    }
+
+    async fn get_auth_token(&self, token: &str) -> AppResult<Option<AuthToken>> {
+        Ok(self.auth_tokens().find_one(doc! { "_id": token }).await?)
+    }
+
+    async fn delete_auth_token(&self, token: &str) -> AppResult<()> {
+        self.auth_tokens().delete_one(doc! { "_id": token }).await?;
+        Ok(())
+    }
+
+    async fn delete_auth_tokens_for(&self, user_id: &str, kind: &str) -> AppResult<()> {
+        self.auth_tokens()
+            .delete_many(doc! { "userId": user_id, "kind": kind })
+            .await?;
+        Ok(())
     }
 }

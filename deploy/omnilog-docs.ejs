@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Documentation | OmniLog</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+html { height: 100%; background: #f8fafc; } body { background: #f8fafc; color: #0f172a; min-height: 100vh; display: flex; flex-direction: column; }
+.doc-page { max-width: 760px; margin: 60px auto; padding: 0 24px; font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; flex: 1; }
+.back-link { display: inline-block; color: #64748b; font-size: 13px; text-decoration: none; margin-bottom: 24px; }
+.back-link:hover { color: #0f172a; }
+.doc-page h1 { font-size: 32px; font-weight: 700; color: #0f172a; margin: 0 0 8px; }
+.doc-page .lead { font-size: 16px; color: #64748b; margin: 0 0 40px; line-height: 1.6; }
+.doc-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 36px; margin-bottom: 28px; box-shadow: 0 1px 4px rgba(0,0,0,.04); }
+.doc-card h2 { font-size: 20px; font-weight: 700; margin: 0 0 16px; color: #0f172a; }
+.doc-card h3 { font-size: 16px; font-weight: 600; color: #0f172a; margin: 24px 0 10px; }
+.doc-card h3:first-child { margin-top: 0; }
+.doc-card p { font-size: 14px; color: #475569; line-height: 1.7; margin: 0 0 12px; }
+.doc-card ul, .doc-card ol { margin: 0 0 12px; padding-left: 20px; }
+.doc-card li { font-size: 14px; color: #475569; line-height: 1.7; margin-bottom: 4px; }
+.doc-card code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 13px; color: #334155; font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace; }
+.doc-card pre { background: #1e293b; color: #e2e8f0; border-radius: 10px; padding: 20px; margin: 12px 0; overflow-x: auto; font-size: 13px; line-height: 1.6; font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace; }
+.doc-card pre code { background: none; padding: 0; color: inherit; }
+.arch-diagram { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin: 16px 0; text-align: center; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px; color: #475569; line-height: 2; }
+.arch-row { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin: 6px 0; }
+.arch-box { background: #fff; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 16px; white-space: nowrap; }
+.arch-box.green { border-color: #86efac; background: #f0fdf4; color: #166534; }
+.arch-box.blue { border-color: #93c5fd; background: #eff6ff; color: #1e40af; }
+.arch-box.gray { border-color: #d1d5db; background: #f9fafb; color: #374151; }
+.arch-arrow { color: #94a3b8; font-size: 18px; margin: 4px 0; }
+.toc { margin: 0 0 12px; padding-left: 20px; }
+.toc li { margin-bottom: 6px; }
+.toc a { color: #16a34a; text-decoration: none; font-size: 14px; }
+.toc a:hover { text-decoration: underline; }
+.note-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 16px 20px; margin: 12px 0; }
+.note-box p { color: #166534; margin: 0; }
+.warn-box { background: #fefce8; border: 1px solid #fde68a; border-radius: 10px; padding: 16px 20px; margin: 12px 0; }
+.warn-box p { color: #854d0e; margin: 0; }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="site-logo">OuYang <span>Software</span></div>
+  <nav class="site-nav"><a href="/">Products</a></nav>
+</header>
+
+<div class="doc-page">
+  <a href="/omnilog" class="back-link">&larr; Back to OmniLog</a>
+
+  <h1>OmniLog Documentation</h1>
+  <p class="lead">Everything you need to set up, deploy, and use OmniLog.</p>
+
+  <div class="doc-card">
+    <h2>Table of Contents</h2>
+    <ul class="toc">
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#architecture">Architecture</a></li>
+      <li><a href="#self-hosted">Self-Hosted Server Deployment</a></li>
+      <li><a href="#local-mode">One-Click Local Mode (Desktop)</a></li>
+      <li><a href="#cloud">Official Cloud (Coming Soon)</a></li>
+      <li><a href="#clients">Client Apps</a></li>
+      <li><a href="#sync">Cross-Platform Sync</a></li>
+      <li><a href="#api">REST API</a></li>
+      <li><a href="#config">Configuration Reference</a></li>
+    </ul>
+  </div>
+
+  <div class="doc-card" id="overview">
+    <h2>Overview</h2>
+    <p>OmniLog is a self-hosted work journal designed for developers, researchers, and anyone who wants a private, structured writing tool. It supports three editor modes &mdash; rich text, Markdown, and LaTeX &mdash; all interconvertible.</p>
+    <p>Key principles:</p>
+    <ul>
+      <li><strong>Self-hosted first</strong> &mdash; your data lives on your own server</li>
+      <li><strong>Offline capable</strong> &mdash; entries are cached locally and synced when online</li>
+      <li><strong>Multi-user</strong> &mdash; role-based access with folder sharing</li>
+      <li><strong>Cross-platform</strong> &mdash; desktop (Windows, Linux) and mobile (Android)</li>
+    </ul>
+  </div>
+
+  <div class="doc-card" id="architecture">
+    <h2>Architecture</h2>
+    <p>OmniLog uses a client-server model. Desktop and mobile apps connect to a central server over a REST API. The server stores all data in MongoDB and handles authentication, versioning, and file uploads.</p>
+
+    <div class="arch-diagram">
+      <div class="arch-row">
+        <div class="arch-box blue">Desktop App (Windows / Linux)</div>
+        <div class="arch-box blue">Mobile App (Android)</div>
+      </div>
+      <div class="arch-arrow">&darr; HTTPS / REST API &darr;</div>
+      <div class="arch-row">
+        <div class="arch-box green">OmniLog Server (Rust / Axum)</div>
+      </div>
+      <div class="arch-arrow">&darr;</div>
+      <div class="arch-row">
+        <div class="arch-box gray">MongoDB</div>
+        <div class="arch-box gray">File Storage (images)</div>
+      </div>
+    </div>
+
+    <p>The server is a single Rust binary with no runtime dependencies. It can run on any Linux server, VPS, or even a Raspberry Pi.</p>
+  </div>
+
+  <div class="doc-card" id="self-hosted">
+    <h2>Self-Hosted Server Deployment</h2>
+    <p>The recommended way to run OmniLog. You get full control over your data, backups, and access.</p>
+
+    <h3>Requirements</h3>
+    <ul>
+      <li>A Linux server (any distro &mdash; the binary is statically linked)</li>
+      <li>MongoDB 5.0+ (local or cloud, e.g. MongoDB Atlas)</li>
+      <li>A reverse proxy for HTTPS (Caddy, nginx, or similar)</li>
+    </ul>
+
+    <h3>Step 1: Download the server binary</h3>
+    <p>Download the latest release for your platform. The binary is self-contained &mdash; no Node.js, Python, or Docker required.</p>
+
+    <h3>Step 2: Create a configuration file</h3>
+    <p>Create a <code>.env</code> file in the same directory as the binary:</p>
+    <pre><code># Server
+PORT=9528
+HOST=0.0.0.0
+
+# Database
+MONGODB_URI=mongodb://user:pass@localhost:27017/omnilog?authSource=admin
+
+# Security - generate a random token for API auth
+API_TOKEN=your-random-token-here
+
+# Bootstrap admin account
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=your-secure-password
+
+# Optional
+# SMTP_HOST=smtp.example.com
+# SMTP_PORT=587
+# SMTP_USER=noreply@example.com
+# SMTP_PASS=password
+# PUBLIC_URL=https://omnilog.example.com</code></pre>
+
+    <h3>Step 3: Run</h3>
+    <pre><code># Run directly
+./omnilog-server
+
+# Or create a systemd service for auto-start
+sudo tee /etc/systemd/system/omnilog.service &lt;&lt;EOF
+[Unit]
+Description=OmniLog Server
+After=network.target mongod.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/omnilog
+ExecStart=/opt/omnilog/omnilog-server
+EnvironmentFile=/opt/omnilog/.env
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl enable --now omnilog</code></pre>
+
+    <h3>Step 4: Set up HTTPS</h3>
+    <p>Put the server behind a reverse proxy. Example with Caddy:</p>
+    <pre><code>omnilog.example.com {
+    reverse_proxy localhost:9528
+}</code></pre>
+
+    <h3>Step 5: Connect your apps</h3>
+    <p>Open the desktop or mobile app, enter your server URL (e.g. <code>https://omnilog.example.com</code>), and sign in with the admin credentials from your <code>.env</code>.</p>
+
+    <div class="note-box">
+      <p><strong>Tip:</strong> The first time the server starts, it creates an admin account using ADMIN_USERNAME and ADMIN_PASSWORD. You can then create additional user accounts through the admin panel or API.</p>
+    </div>
+  </div>
+
+  <div class="doc-card" id="local-mode">
+    <h2>One-Click Local Mode (Desktop)</h2>
+    <p>Don't have a server? The desktop app includes an embedded server that runs on your machine with one click.</p>
+    <ul>
+      <li>No terminal, no MongoDB, no configuration needed</li>
+      <li>Data stored locally using embedded file-based storage</li>
+      <li>Works completely offline</li>
+      <li>Great for personal use or trying OmniLog before setting up a server</li>
+    </ul>
+    <p>To start: open the desktop app, and click <strong>&ldquo;Start local server&rdquo;</strong> on the setup screen. The app spawns the server in the background and connects automatically.</p>
+
+    <div class="note-box">
+      <p><strong>Migration:</strong> You can switch from local mode to a self-hosted server at any time. Your entries are synced to the new server automatically.</p>
+    </div>
+
+    <div class="warn-box">
+      <p><strong>Note:</strong> Local mode is desktop-only. Mobile apps require a remote server to connect to &mdash; they cannot run an embedded server.</p>
+    </div>
+  </div>
+
+  <div class="doc-card" id="cloud">
+    <h2>Official Cloud (Coming Soon)</h2>
+    <p>We are building a hosted version of OmniLog for users who prefer not to manage a server. The official cloud service will offer:</p>
+    <ul>
+      <li>Managed hosting &mdash; no server setup required</li>
+      <li>Automatic backups and high availability</li>
+      <li>Free tier for personal use</li>
+      <li>Pro and team tiers with additional storage and features</li>
+    </ul>
+    <p>Your apps will connect to the official service the same way they connect to a self-hosted server. You can migrate between self-hosted and cloud at any time.</p>
+  </div>
+
+  <div class="doc-card" id="clients">
+    <h2>Client Apps</h2>
+
+    <h3>Desktop (Windows &amp; Linux)</h3>
+    <p>The full-featured client, built with Tauri 2 (Rust + React). Includes:</p>
+    <ul>
+      <li>Rich text editor with toolbar, keyboard shortcuts, and image embedding</li>
+      <li>Markdown editor with live preview</li>
+      <li>LaTeX editor for scientific and mathematical writing</li>
+      <li>All three modes are interconvertible &mdash; switch freely</li>
+      <li>Folder organization with drag-and-drop</li>
+      <li>Folder sharing between users (viewer / editor roles)</li>
+      <li>Version history with point-in-time restore</li>
+      <li>Image upload and inline display</li>
+      <li>Full-text search across all entries</li>
+      <li>Dark mode</li>
+      <li>Embedded local server (one-click setup)</li>
+    </ul>
+
+    <h3>Mobile (Android)</h3>
+    <p>Optimized for quick capture and review on the go. Built with Tauri 2 Mobile. Includes:</p>
+    <ul>
+      <li>Markdown editing</li>
+      <li>Full-text search</li>
+      <li>Folder navigation</li>
+      <li>Offline caching with background sync</li>
+      <li>Dark mode</li>
+    </ul>
+
+    <div class="warn-box">
+      <p><strong>Note:</strong> The mobile app is currently in development. Android release coming soon.</p>
+    </div>
+  </div>
+
+  <div class="doc-card" id="sync">
+    <h2>Cross-Platform Sync</h2>
+    <p>All clients connect to the same server. Write on your desktop at work, review on your phone at home.</p>
+    <ul>
+      <li>Entries sync automatically when online</li>
+      <li>Offline mode &mdash; the app caches entries locally and pushes changes when reconnected</li>
+      <li>Conflict resolution &mdash; server version wins; your local changes are preserved as a new version</li>
+      <li>Multiple devices can be connected to the same account simultaneously</li>
+    </ul>
+    <p>Each device identifies itself by a unique device name, visible in the version history so you can see where each edit was made.</p>
+  </div>
+
+  <div class="doc-card" id="api">
+    <h2>REST API</h2>
+    <p>The server exposes a full REST API for all operations. Both the desktop and mobile apps use this API &mdash; there is no special protocol.</p>
+
+    <h3>Authentication</h3>
+    <p>Two methods:</p>
+    <ul>
+      <li><strong>API Token</strong> &mdash; set in <code>.env</code> as <code>API_TOKEN</code>. Sent as <code>Authorization: Bearer &lt;token&gt;</code>. Has full admin access.</li>
+      <li><strong>JWT Login</strong> &mdash; call <code>POST /api/auth/login</code> with username and password. Returns a JWT token scoped to the user's permissions.</li>
+    </ul>
+
+    <h3>Key Endpoints</h3>
+    <pre><code>GET    /health              # Server health check
+POST   /api/auth/login       # Login, returns JWT
+GET    /api/auth/me          # Current user profile
+
+GET    /api/entries           # List entries (with ?folderId= filter)
+POST   /api/entries           # Create entry
+PUT    /api/entries/:id       # Update entry
+DELETE /api/entries/:id       # Delete entry
+GET    /api/entries/search?q= # Full-text search
+
+GET    /api/folders           # List folders
+POST   /api/folders           # Create folder
+PUT    /api/folders/:id       # Update folder
+DELETE /api/folders/:id       # Delete folder
+
+GET    /api/settings          # Server settings
+PUT    /api/settings          # Update settings
+
+POST   /api/assets/upload     # Upload image (multipart)</code></pre>
+  </div>
+
+  <div class="doc-card" id="config">
+    <h2>Configuration Reference</h2>
+    <p>All configuration is done through environment variables (or a <code>.env</code> file).</p>
+
+    <pre><code># Required
+PORT=9528                 # HTTP listen port
+HOST=0.0.0.0              # Bind address
+MONGODB_URI=mongodb://... # MongoDB connection string
+API_TOKEN=...             # Static admin token
+
+# Bootstrap (used on first run only)
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=...
+
+# Optional: Email (for verification &amp; password reset)
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=noreply@example.com
+SMTP_PASS=...
+EMAIL_FROM=OmniLog &lt;noreply@example.com&gt;
+
+# Optional: Public URL (used in emails)
+PUBLIC_URL=https://omnilog.example.com
+
+# Optional: CORS (default: allow all)
+CORS_ORIGIN=https://your-frontend.com</code></pre>
+  </div>
+
+</div>
+
+<footer style="text-align:center; padding:32px; color:#94a3b8; font-size:12px;">
+  &copy; OuYang Software
+</footer>
+</body>
+</html>

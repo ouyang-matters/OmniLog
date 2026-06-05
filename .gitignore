@@ -34,6 +34,9 @@ apps/server/server_data/
 *.log
 logs/
 
+# Claude Code
+.claude/
+
 # Editor / OS
 .DS_Store
 Thumbs.db

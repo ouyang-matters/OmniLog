@@ -17,7 +17,7 @@ use crate::models::folder::Folder;
 use crate::models::license::License;
 use crate::models::message::Message;
 use crate::models::share::Share;
-use crate::models::user::User;
+use crate::models::user::{AuthToken, User};
 use crate::models::version::Version;
 
 #[async_trait]
@@ -83,11 +83,19 @@ pub trait Storage: Send + Sync {
     async fn create_user(&self, user: &User) -> AppResult<()>;
     async fn get_user(&self, id: &str) -> AppResult<Option<User>>;
     async fn get_user_by_username(&self, username: &str) -> AppResult<Option<User>>;
+    async fn get_user_by_email(&self, email: &str) -> AppResult<Option<User>>;
     async fn list_users(&self) -> AppResult<Vec<User>>;
     /// Replace an existing user. Returns false if no user with that id exists.
     async fn replace_user(&self, user: &User) -> AppResult<bool>;
     /// Delete a user. Returns true if a user was removed.
     async fn delete_user(&self, id: &str) -> AppResult<bool>;
+
+    // --- Auth tokens (email verification / password reset) ---
+    async fn insert_auth_token(&self, token: &AuthToken) -> AppResult<()>;
+    async fn get_auth_token(&self, token: &str) -> AppResult<Option<AuthToken>>;
+    async fn delete_auth_token(&self, token: &str) -> AppResult<()>;
+    /// Remove all tokens for a user+kind (e.g. after successful verification).
+    async fn delete_auth_tokens_for(&self, user_id: &str, kind: &str) -> AppResult<()>;
 
     // --- Folder shares ---
     async fn add_share(&self, share: &Share) -> AppResult<()>;

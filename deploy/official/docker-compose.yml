@@ -1,0 +1,21 @@
+services:
+  omnilog-server:
+    build:
+      context: ../../
+      dockerfile: deploy/official/Dockerfile
+    container_name: omnilog-server
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.production
+    volumes:
+      - server-data:/data
+    # If MongoDB is on the host machine, use host networking or
+    # set MONGODB_URI to host.docker.internal / the LAN IP.
+    # Uncomment below if MongoDB runs on the same host:
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"
+
+volumes:
+  server-data:

@@ -2,6 +2,9 @@ import { Editor } from "@tiptap/core";
 import { buildRichExtensions } from "./richExtensions";
 import { renderMarkdown, renderLatexDocument, nodeMath } from "./sourceRender";
 
+// Re-export the pure serializers from shared so existing imports keep working
+export { docToMarkdown, docToLatex } from "@omnilog/shared";
+
 /**
  * Convert Markdown / LaTeX source into a rich-text ProseMirror document, so
  * switching from a source mode to rich keeps the content (headings, lists,

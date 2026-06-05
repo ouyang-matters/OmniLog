@@ -4,3 +4,4 @@
 # working on cloud-synced drives that don't support symlinks.
 packages:
   - "apps/desktop"
+  - "apps/mobile"

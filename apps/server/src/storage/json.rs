@@ -12,7 +12,7 @@ use crate::models::folder::Folder;
 use crate::models::license::License;
 use crate::models::message::Message;
 use crate::models::share::Share;
-use crate::models::user::User;
+use crate::models::user::{AuthToken, User};
 use crate::models::version::Version;
 
 use super::Storage;
@@ -34,6 +34,7 @@ pub struct JsonStorage {
     shares: RwLock<Vec<Share>>,
     messages: RwLock<Vec<Message>>,
     licenses: RwLock<HashMap<String, License>>,
+    auth_tokens: RwLock<Vec<AuthToken>>,
     entries_path: PathBuf,
     assets_path: PathBuf,
     versions_path: PathBuf,
@@ -43,6 +44,7 @@ pub struct JsonStorage {
     shares_path: PathBuf,
     messages_path: PathBuf,
     licenses_path: PathBuf,
+    auth_tokens_path: PathBuf,
 }
 
 impl JsonStorage {
@@ -59,6 +61,7 @@ impl JsonStorage {
         let shares_path = db_dir.join("shares.json");
         let messages_path = db_dir.join("messages.json");
         let licenses_path = db_dir.join("licenses.json");
+        let auth_tokens_path = db_dir.join("auth_tokens.json");
 
         let entries = read_map(&entries_path).await?;
         let assets = read_map(&assets_path).await?;
@@ -69,6 +72,7 @@ impl JsonStorage {
         let shares = read_vec(&shares_path).await?;
         let messages = read_vec(&messages_path).await?;
         let licenses = read_map(&licenses_path).await?;
+        let auth_tokens = read_vec(&auth_tokens_path).await?;
 
         Ok(Self {
             entries: RwLock::new(entries),
@@ -80,6 +84,7 @@ impl JsonStorage {
             shares: RwLock::new(shares),
             messages: RwLock::new(messages),
             licenses: RwLock::new(licenses),
+            auth_tokens: RwLock::new(auth_tokens),
             entries_path,
             assets_path,
             versions_path,
@@ -89,6 +94,7 @@ impl JsonStorage {
             shares_path,
             messages_path,
             licenses_path,
+            auth_tokens_path,
         })
     }
 
@@ -139,6 +145,11 @@ impl JsonStorage {
     async fn flush_assets(&self, map: &HashMap<String, Asset>) -> AppResult<()> {
         let json = serde_json::to_vec_pretty(&map.values().collect::<Vec<_>>())?;
         tokio::fs::write(&self.assets_path, json).await?;
+        Ok(())
+    }
+
+    async fn flush_auth_tokens(&self, tokens: &[AuthToken]) -> AppResult<()> {
+        tokio::fs::write(&self.auth_tokens_path, serde_json::to_vec_pretty(tokens)?).await?;
         Ok(())
     }
 }
@@ -434,6 +445,16 @@ impl Storage for JsonStorage {
             .cloned())
     }
 
+    async fn get_user_by_email(&self, email: &str) -> AppResult<Option<User>> {
+        Ok(self
+            .users
+            .read()
+            .await
+            .values()
+            .find(|u| u.email.as_deref() == Some(email))
+            .cloned())
+    }
+
     async fn list_users(&self) -> AppResult<Vec<User>> {
         let mut items: Vec<User> = self.users.read().await.values().cloned().collect();
         items.sort_by(|a, b| a.username.cmp(&b.username));
@@ -609,5 +630,35 @@ impl Storage for JsonStorage {
             .values()
             .find(|l| l.stripe_customer_id.as_deref() == Some(customer_id))
             .cloned())
+    }
+
+    // --- Auth tokens ---
+
+    async fn insert_auth_token(&self, token: &AuthToken) -> AppResult<()> {
+        let mut v = self.auth_tokens.write().await;
+        v.push(token.clone());
+        self.flush_auth_tokens(&v).await
+    }
+
+    async fn get_auth_token(&self, token: &str) -> AppResult<Option<AuthToken>> {
+        Ok(self
+            .auth_tokens
+            .read()
+            .await
+            .iter()
+            .find(|t| t.token == token)
+            .cloned())
+    }
+
+    async fn delete_auth_token(&self, token: &str) -> AppResult<()> {
+        let mut v = self.auth_tokens.write().await;
+        v.retain(|t| t.token != token);
+        self.flush_auth_tokens(&v).await
+    }
+
+    async fn delete_auth_tokens_for(&self, user_id: &str, kind: &str) -> AppResult<()> {
+        let mut v = self.auth_tokens.write().await;
+        v.retain(|t| !(t.user_id == user_id && t.kind == kind));
+        self.flush_auth_tokens(&v).await
     }
 }

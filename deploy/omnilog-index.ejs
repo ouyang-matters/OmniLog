@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OmniLog | Self-Hosted Work Journal</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+html { height: 100%; background: #f8fafc; } body { background: #f8fafc; color: #0f172a; min-height: 100vh; display: flex; flex-direction: column; }
+.ol-page { max-width: 760px; margin: 60px auto; padding: 0 24px; font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; flex: 1; }
+.ol-badge { display: inline-block; background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; border-radius: 20px; padding: 4px 14px; font-size: 12px; font-weight: 600; margin-bottom: 16px; letter-spacing: .04em; text-transform: uppercase; }
+.ol-page h1 { font-size: 36px; font-weight: 700; color: #0f172a; margin: 0 0 10px; }
+.ol-page h1 span { color: #16a34a; }
+.ol-page .subtitle { font-size: 17px; color: #64748b; margin: 0 0 40px; line-height: 1.6; }
+.ol-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 36px; margin-bottom: 28px; box-shadow: 0 1px 4px rgba(0,0,0,.04); }
+.ol-card h2 { font-size: 20px; font-weight: 700; margin: 0 0 16px; color: #0f172a; }
+.features-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; margin: 16px 0; }
+.feature-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #374151; padding: 3px 0; }
+.check { color: #16a34a; font-weight: 700; font-size: 14px; }
+.ol-btn { display: inline-block; padding: 14px 28px; background: #16a34a; color: #fff; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; text-decoration: none; transition: background .15s; }
+.ol-btn:hover { background: #15803d; }
+.ol-btn-outline { display: inline-block; padding: 14px 28px; background: transparent; color: #16a34a; border: 1px solid #16a34a; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; text-decoration: none; transition: all .15s; margin-left: 12px; }
+.ol-btn-outline:hover { background: #f0fdf4; }
+.ol-btn-disabled { display: inline-block; padding: 14px 28px; background: #e2e8f0; color: #94a3b8; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: default; text-decoration: none; }
+.back-link { display: inline-block; color: #64748b; font-size: 13px; text-decoration: none; margin-bottom: 24px; }
+.back-link:hover { color: #0f172a; }
+.platforms { display: flex; gap: 16px; margin: 16px 0; flex-wrap: wrap; }
+.platform-tag { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 500; color: #475569; }
+.note { font-size: 12px; color: #94a3b8; margin-top: 10px; line-height: 1.5; }
+.doc-section { margin-top: 8px; }
+.doc-section h3 { font-size: 16px; font-weight: 600; color: #0f172a; margin: 24px 0 10px; }
+.doc-section h3:first-child { margin-top: 0; }
+.doc-section p { font-size: 14px; color: #64748b; line-height: 1.7; margin: 0 0 12px; }
+.doc-section ul { margin: 0 0 12px; padding-left: 20px; }
+.doc-section li { font-size: 14px; color: #64748b; line-height: 1.7; margin-bottom: 4px; }
+.doc-section code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 13px; color: #334155; }
+.arch-diagram { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin: 16px 0; text-align: center; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px; color: #475569; line-height: 2; }
+.arch-row { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin: 6px 0; }
+.arch-box { background: #fff; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 16px; white-space: nowrap; }
+.arch-box.green { border-color: #86efac; background: #f0fdf4; color: #166534; }
+.arch-box.blue { border-color: #93c5fd; background: #eff6ff; color: #1e40af; }
+.arch-box.gray { border-color: #d1d5db; background: #f9fafb; color: #374151; }
+.arch-arrow { color: #94a3b8; font-size: 18px; margin: 4px 0; }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="site-logo">OuYang <span>Software</span></div>
+  <nav class="site-nav"><a href="/">Products</a></nav>
+</header>
+
+<div class="ol-page">
+  <a href="/" class="back-link">&larr; Back to products</a>
+
+  <div class="ol-badge">Free &amp; Open Source</div>
+  <h1>Your work, <span>your journal.</span></h1>
+  <p class="subtitle">OmniLog is a self-hosted work journal with rich text, Markdown, and LaTeX support. Multi-user, private, and fully under your control.</p>
+
+  <div class="ol-card">
+    <h2>Features</h2>
+    <div class="features-grid">
+      <div class="feature-row"><span class="check">&#10003;</span> Rich text, Markdown &amp; LaTeX editors</div>
+      <div class="feature-row"><span class="check">&#10003;</span> Three editors, fully interconvertible</div>
+      <div class="feature-row"><span class="check">&#10003;</span> Multi-user with role-based access</div>
+      <div class="feature-row"><span class="check">&#10003;</span> Self-hosted &mdash; your data stays yours</div>
+      <div class="feature-row"><span class="check">&#10003;</span> MongoDB or embedded file storage</div>
+      <div class="feature-row"><span class="check">&#10003;</span> Cross-platform desktop &amp; mobile</div>
+      <div class="feature-row"><span class="check">&#10003;</span> REST API with token auth</div>
+      <div class="feature-row"><span class="check">&#10003;</span> Email verification &amp; password reset</div>
+    </div>
+  </div>
+
+  <div class="ol-card">
+    <h2>Platforms</h2>
+    <div class="platforms">
+      <div class="platform-tag">Windows</div>
+      <div class="platform-tag">Linux</div>
+      <div class="platform-tag">Android (coming soon)</div>
+    </div>
+    <p class="note">Desktop app built with Tauri 2. Server runs anywhere with a single binary.</p>
+  </div>
+
+  <div class="ol-card">
+    <h2>Get Started</h2>
+    <p style="color:#64748b; font-size:15px; margin:0 0 20px; line-height:1.6;">Learn how OmniLog works &mdash; self-hosted server, one-click local mode, cross-platform sync, and more.</p>
+    <a href="/omnilog/docs" class="ol-btn">Documentation</a>
+    <span class="ol-btn-disabled" style="margin-left:12px;">Download (coming soon)</span>
+  </div>
+
+  <div class="ol-card">
+    <h2>Privacy</h2>
+    <p style="color:#64748b; font-size:14px; margin:0; line-height:1.6;">OmniLog is self-hosted. Your journal entries, user data, and authentication stay on your own server. We collect nothing. <a href="/omnilog/privacy" style="color:#16a34a;">Privacy policy &rarr;</a></p>
+  </div>
+</div>
+
+<footer style="text-align:center; padding:32px; color:#94a3b8; font-size:12px;">
+  &copy; OuYang Software
+</footer>
+</body>
+</html>

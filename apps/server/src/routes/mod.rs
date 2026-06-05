@@ -73,10 +73,21 @@ pub fn build_router(state: AppState) -> Router {
             crate::auth::authenticate,
         ));
 
-    // Public API routes (no auth): login, plus the Stripe webhook (which
-    // authenticates with a per-event HMAC signature, not a bearer token).
-    let public_api = Router::new()
+    // Public API routes (no auth): login, registration, verification,
+    // password reset, plus the Stripe webhook (HMAC-authenticated).
+    let rate_limited_auth = Router::new()
         .route("/auth/login", post(auth::login))
+        .route("/auth/register", post(auth::register))
+        .route("/auth/forgot-password", post(auth::forgot_password))
+        .route("/auth/reset-password", post(auth::reset_password))
+        .route_layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            crate::rate_limit::rate_limit_auth,
+        ));
+
+    let public_api = Router::new()
+        .merge(rate_limited_auth)
+        .route("/auth/verify-email", get(auth::verify_email))
         .route("/billing/webhook", post(billing::webhook));
 
     let api = public_api.merge(protected);

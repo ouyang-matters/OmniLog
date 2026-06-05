@@ -17,6 +17,9 @@
     "tauri": "pnpm --filter @omnilog/desktop tauri",
     "dev:server": "cargo run --manifest-path apps/server/Cargo.toml",
     "build:server": "cargo build --release --manifest-path apps/server/Cargo.toml",
-    "typecheck": "pnpm --filter @omnilog/desktop typecheck"
+    "dev:mobile": "pnpm --filter @omnilog/mobile dev",
+    "build:mobile": "pnpm --filter @omnilog/mobile build",
+    "tauri:mobile": "pnpm --filter @omnilog/mobile tauri",
+    "typecheck": "pnpm --filter @omnilog/desktop typecheck && pnpm --filter @omnilog/mobile typecheck"
   }
 }

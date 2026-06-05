@@ -1,8 +1,10 @@
 mod auth;
 mod billing;
 mod config;
+mod email;
 mod error;
 mod models;
+mod rate_limit;
 mod routes;
 mod state;
 mod storage;
@@ -61,8 +63,22 @@ async fn main() -> Result<()> {
     // Create the initial admin user on first run.
     bootstrap_admin(storage.as_ref(), &config).await?;
 
+    // Email sender. Currently a log-only stub — plug in a real backend (SMTP,
+    // SendGrid, ThreadLedger mail) by replacing this with the real impl.
+    let email_sender: Arc<dyn email::EmailSender> = Arc::new(email::LogEmailSender);
+
     let addr = format!("{}:{}", config.host, config.port);
-    let state = AppState::new(config, storage);
+    let state = AppState::new(config, storage, email_sender);
+
+    // Background task: clean up expired rate-limiter buckets every 60s.
+    let limiter = state.auth_limiter.clone();
+    tokio::spawn(async move {
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+            limiter.cleanup().await;
+        }
+    });
+
     let app = routes::build_router(state).layer(DefaultBodyLimit::max(MAX_BODY_BYTES));
 
     let listener = tokio::net::TcpListener::bind(&addr).await?;
@@ -88,6 +104,8 @@ async fn bootstrap_admin(storage: &dyn Storage, config: &Config) -> Result<()> {
             created_at: now_rfc3339(),
             display_name: None,
             avatar_data_url: None,
+            email: None,
+            email_verified: false,
         };
         storage.create_user(&user).await?;
         tracing::info!(username = %config.admin_username, "created initial owner user");

@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "default",
+  "description": "Default capabilities for OmniLog mobile",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:default",
+    "store:default"
+  ]
+}
