@@ -1,36 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import type { Transaction } from "@tiptap/pm/state";
-import StarterKit from "@tiptap/starter-kit";
-import Underline from "@tiptap/extension-underline";
-import Link from "@tiptap/extension-link";
-import Placeholder from "@tiptap/extension-placeholder";
-import TaskList from "@tiptap/extension-task-list";
-import TaskItem from "@tiptap/extension-task-item";
-import Table from "@tiptap/extension-table";
-import TableRow from "@tiptap/extension-table-row";
-import TableHeader from "@tiptap/extension-table-header";
-import TableCell from "@tiptap/extension-table-cell";
 
 import { useApp } from "../../store/appStore";
 import { Toolbar } from "./Toolbar";
-import { MathDialog } from "./MathDialog";
 import { InlineMathPopover } from "./InlineMathPopover";
-import { InlineMath, BlockMath, EDIT_MATH_EVENT, type EditMathDetail } from "./MathNode";
-import { ImageNode } from "./ImageNode";
+import { EDIT_MATH_EVENT, type EditMathDetail } from "./MathNode";
 import { insertImagesFromFiles } from "./imageInsert";
-import { AutoPair } from "./extensions/AutoPair";
-import { MathShortcuts } from "./extensions/MathShortcuts";
+import { buildRichExtensions } from "./richExtensions";
 import type { Draft } from "../../lib/drafts";
+import { promptDialog } from "../../ui/dialog";
 
-interface MathDialogState {
+interface MathState {
   open: boolean;
-  pos: number | null;
-  latex: string;
-}
-
-interface InlineState {
-  open: boolean;
+  /** true = block/display formula, false = inline. */
+  display: boolean;
   pos: number;
   latex: string;
   anchor: { left: number; top: number } | null;
@@ -43,37 +27,27 @@ interface Props {
 }
 
 /**
- * Rich-text editor (TipTap + KaTeX). Block formulas open the modal dialog;
- * inline formulas open a floating popover anchored at the node.
+ * Rich-text editor (TipTap + KaTeX). Both inline and block formulas are edited
+ * in place via a floating popover anchored at the node — no modal dialog.
  */
 export function RichEditor({ draft }: Props) {
   const initial = useRef(draft).current;
   const patchCurrent = useApp((s) => s.patchCurrent);
   const saveNow = useApp((s) => s.saveNow);
 
-  const [mathDialog, setMathDialog] = useState<MathDialogState>({ open: false, pos: null, latex: "" });
-  const [inline, setInline] = useState<InlineState>({ open: false, pos: 0, latex: "", anchor: null, fresh: false });
+  const [math, setMath] = useState<MathState>({
+    open: false,
+    display: false,
+    pos: 0,
+    latex: "",
+    anchor: null,
+    fresh: false,
+  });
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<Editor | null>(null);
 
   const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Underline,
-      Link.configure({ openOnClick: false, autolink: true }),
-      Placeholder.configure({ placeholder: "Start writing your work log..." }),
-      TaskList,
-      TaskItem.configure({ nested: true }),
-      Table.configure({ resizable: true }),
-      TableRow,
-      TableHeader,
-      TableCell,
-      InlineMath,
-      BlockMath,
-      ImageNode,
-      AutoPair,
-      MathShortcuts,
-    ],
+    extensions: buildRichExtensions(),
     content: (initial?.contentJson as object) ?? { type: "doc", content: [{ type: "paragraph" }] },
     autofocus: "end",
     editorProps: {
@@ -113,10 +87,16 @@ export function RichEditor({ draft }: Props) {
         if (key === "k") {
           event.preventDefault();
           const prev = (ed?.getAttributes("link").href as string) ?? "";
-          const url = window.prompt("Link URL", prev);
-          if (url === null) return true;
-          if (url === "") ed?.chain().focus().unsetLink().run();
-          else ed?.chain().focus().setLink({ href: url }).run();
+          void promptDialog({
+            title: "Link",
+            placeholder: "https://...",
+            defaultValue: prev,
+            confirmLabel: "Apply",
+          }).then((url) => {
+            if (url === null) return;
+            if (url === "") ed?.chain().focus().unsetLink().run();
+            else ed?.chain().focus().setLink({ href: url }).run();
+          });
           return true;
         }
         return false;
@@ -137,106 +117,80 @@ export function RichEditor({ draft }: Props) {
 
   // Math node views dispatch EDIT_MATH_EVENT on double-click. We route the
   // event to either the inline popover or the block modal based on `display`.
+  // Anchor a popover just under the node at `pos`, relative to the editor host.
+  function anchorFor(pos: number): { left: number; top: number } | null {
+    const ed = editorRef.current;
+    const cont = containerRef.current?.getBoundingClientRect();
+    if (!ed || !cont) return null;
+    try {
+      const c = ed.view.coordsAtPos(pos);
+      return { left: c.left - cont.left, top: c.bottom - cont.top + 4 };
+    } catch {
+      return null;
+    }
+  }
+
+  // Math node views dispatch EDIT_MATH_EVENT on double-click -> open the popover
+  // (inline or block) anchored at the node.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<EditMathDetail>).detail;
-      if (detail.display) {
-        setMathDialog({ open: true, pos: detail.pos, latex: detail.latex });
-        return;
-      }
-      // Inline math — anchor a popover at the node's bounding rect.
-      const target = e.target as HTMLElement | null;
-      const rect = target?.getBoundingClientRect();
-      const container = containerRef.current?.getBoundingClientRect();
-      const anchor = rect && container
-        ? { left: rect.left - container.left, top: rect.bottom - container.top + 4 }
-        : null;
-      setInline({ open: true, pos: detail.pos, latex: detail.latex, anchor, fresh: false });
+      setMath({
+        open: true,
+        display: detail.display,
+        pos: detail.pos,
+        latex: detail.latex,
+        anchor: anchorFor(detail.pos),
+        fresh: false,
+      });
     };
     el.addEventListener(EDIT_MATH_EVENT, handler);
     return () => el.removeEventListener(EDIT_MATH_EVENT, handler);
   }, []);
 
+  // Insert an empty formula node and immediately open the in-place editor for
+  // it — no modal. `display` chooses block vs inline.
   function openInsertMath(display: boolean) {
-    if (display) {
-      setMathDialog({ open: true, pos: null, latex: "" });
-    } else {
-      // Insert an empty inline node and immediately open the popover for it.
-      if (!editor) return;
-      const before = editor.state.selection.from;
-      editor.chain().focus().insertContent({ type: "inlineMath", attrs: { latex: "" } }).run();
-      const pos = before;
-      // After the insert the DOM updates; query the node's rect on next tick.
-      requestAnimationFrame(() => {
-        const nodeEl = containerRef.current?.querySelector<HTMLElement>(
-          ".math-inline:empty, .math-inline.math-empty",
-        );
-        const rect = nodeEl?.getBoundingClientRect();
-        const container = containerRef.current?.getBoundingClientRect();
-        const anchor = rect && container
-          ? { left: rect.left - container.left, top: rect.bottom - container.top + 4 }
-          : null;
-        setInline({ open: true, pos, latex: "", anchor, fresh: true });
-      });
-    }
+    const ed = editorRef.current ?? editor;
+    if (!ed) return;
+    const type = display ? "blockMath" : "inlineMath";
+    ed.chain().focus().insertContent({ type, attrs: { latex: "" } }).run();
+    // Locate the freshly inserted empty node by scanning the doc.
+    let pos = ed.state.selection.from;
+    ed.state.doc.descendants((node, p) => {
+      if (node.type.name === type && !String(node.attrs.latex ?? "").trim()) pos = p;
+    });
+    requestAnimationFrame(() => {
+      setMath({ open: true, display, pos, latex: "", anchor: anchorFor(pos), fresh: true });
+    });
   }
 
-  function submitBlockMath(latex: string) {
-    if (!editor) return;
-    if (mathDialog.pos === null) {
-      editor.chain().focus().insertContent({ type: "blockMath", attrs: { latex } }).run();
-    } else {
-      const pos = mathDialog.pos;
-      editor
-        .chain()
-        .focus()
-        .command(({ tr }: { tr: Transaction }) => {
-          tr.setNodeMarkup(pos, undefined, { latex });
-          return true;
-        })
-        .run();
-    }
-    setMathDialog((m) => ({ ...m, open: false }));
-  }
-
-  function submitInline(latex: string) {
-    if (!editor) {
-      setInline((s) => ({ ...s, open: false }));
+  function submitMath(latex: string) {
+    const ed = editorRef.current;
+    if (!ed) {
+      setMath((s) => ({ ...s, open: false }));
       return;
     }
-    const pos = inline.pos;
-    // Trim whitespace; an entirely empty inline node is useless, so drop it
-    // (especially the fresh ones we auto-inserted from the toolbar).
+    const pos = math.pos;
     const trimmed = latex.trim();
-    if (!trimmed) {
-      editor
-        .chain()
-        .focus()
-        .command(({ tr }: { tr: Transaction }) => {
-          tr.delete(pos, pos + 1);
-          return true;
-        })
-        .run();
-    } else {
-      editor
-        .chain()
-        .focus()
-        .command(({ tr }: { tr: Transaction }) => {
-          tr.setNodeMarkup(pos, undefined, { latex: trimmed });
-          return true;
-        })
-        .run();
-    }
-    setInline((s) => ({ ...s, open: false }));
+    ed.chain()
+      .focus()
+      .command(({ tr }: { tr: Transaction }) => {
+        if (!trimmed) tr.delete(pos, pos + 1);
+        else tr.setNodeMarkup(pos, undefined, { latex: trimmed });
+        return true;
+      })
+      .run();
+    setMath((s) => ({ ...s, open: false }));
   }
 
-  function cancelInline() {
-    if (editor && inline.fresh) {
-      const pos = inline.pos;
-      editor
-        .chain()
+  function cancelMath() {
+    const ed = editorRef.current;
+    if (ed && math.fresh) {
+      const pos = math.pos;
+      ed.chain()
         .focus()
         .command(({ tr }: { tr: Transaction }) => {
           tr.delete(pos, pos + 1);
@@ -244,7 +198,7 @@ export function RichEditor({ draft }: Props) {
         })
         .run();
     }
-    setInline((s) => ({ ...s, open: false }));
+    setMath((s) => ({ ...s, open: false }));
   }
 
   return (
@@ -252,20 +206,13 @@ export function RichEditor({ draft }: Props) {
       {editor && <Toolbar editor={editor} onInsertMath={openInsertMath} />}
       <EditorContent editor={editor} className="editor-content" />
 
-      <MathDialog
-        open={mathDialog.open}
-        initialLatex={mathDialog.latex}
-        display={true}
-        onSubmit={submitBlockMath}
-        onClose={() => setMathDialog((m) => ({ ...m, open: false }))}
-      />
-
-      {inline.open && (
+      {math.open && (
         <InlineMathPopover
-          initialLatex={inline.latex}
-          anchor={inline.anchor}
-          onSubmit={submitInline}
-          onClose={cancelInline}
+          initialLatex={math.latex}
+          display={math.display}
+          anchor={math.anchor}
+          onSubmit={submitMath}
+          onClose={cancelMath}
         />
       )}
     </div>

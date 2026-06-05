@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { Share } from "@omnilog/shared";
 import { getClient } from "../store/appStore";
 import { Icon } from "../assets/icons";
+import { confirmDialog } from "../ui/dialog";
 
 interface Props {
   folderId: string;
@@ -53,9 +54,18 @@ export function ShareModal({ folderId, folderName, onClose }: Props) {
     }
   }
 
-  async function onRemove(userId: string) {
+  async function onRemove(userId: string, username: string) {
     const client = getClient();
     if (!client) return;
+    if (
+      !(await confirmDialog({
+        title: "Remove access?",
+        message: `${username} will lose access to "${folderName}".`,
+        confirmLabel: "Remove",
+        danger: true,
+      }))
+    )
+      return;
     await client.deleteShare(folderId, userId).catch(() => undefined);
     reload();
   }
@@ -86,7 +96,7 @@ export function ShareModal({ folderId, folderName, onClose }: Props) {
               </select>
               <button
                 className="btn small danger"
-                onClick={() => void onRemove(s.userId)}
+                onClick={() => void onRemove(s.userId, s.username)}
                 title="Remove access"
               >
                 <Icon name="trash" size={13} />

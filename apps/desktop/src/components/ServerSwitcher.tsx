@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ServerConnection } from "@omnilog/shared";
 import { useApp } from "../store/appStore";
 import { Icon } from "../assets/icons";
+import { alertDialog } from "../ui/dialog";
 
 /**
  * Topbar dropdown that shows the active server and lets the user switch
@@ -66,7 +67,7 @@ export function ServerSwitcher() {
                   try {
                     await switchConnection(c.id);
                   } catch (e) {
-                    window.alert(e instanceof Error ? e.message : "Failed to switch server.");
+                    await alertDialog({ message: e instanceof Error ? e.message : "Failed to switch server." });
                   }
                 }
               }}

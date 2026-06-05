@@ -4,13 +4,14 @@ import { invoke } from "@tauri-apps/api/core";
 import { getClient } from "../../store/appStore";
 import { useApp } from "../../store/appStore";
 import { ASSET_SRC_PREFIX, cacheAssetUrl } from "./ImageNode";
+import { alertDialog } from "../../ui/dialog";
 
 /** Upload a single image file to the server and insert it into the editor. */
 export async function uploadAndInsert(editor: Editor, file: Blob, fileName: string) {
   const client = getClient();
   const entryId = useApp.getState().currentId;
   if (!client || !entryId) {
-    alert("Connect to a server before adding images.");
+    await alertDialog({ message: "Connect to a server before adding images." });
     return;
   }
   try {
@@ -31,10 +32,10 @@ export async function uploadAndInsert(editor: Editor, file: Blob, fileName: stri
       })
       .run();
   } catch (e) {
-    alert(
-      "Image upload failed: " +
-        (e instanceof Error ? e.message : "server unreachable"),
-    );
+    await alertDialog({
+      title: "Image upload failed",
+      message: e instanceof Error ? e.message : "server unreachable",
+    });
   }
 }
 

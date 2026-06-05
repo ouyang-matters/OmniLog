@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { EntryVersion } from "@omnilog/shared";
 import { getClient, useApp } from "../store/appStore";
+import { confirmDialog } from "../ui/dialog";
 
 interface Props {
   entryId: string;
@@ -26,7 +27,13 @@ export function HistoryModal({ entryId, onClose }: Props) {
   }, [entryId]);
 
   async function onRestore(version: number) {
-    if (!confirm(`Restore version ${version}? Current content is saved to history first.`)) {
+    if (
+      !(await confirmDialog({
+        title: `Restore version ${version}?`,
+        message: "The current content is snapshotted to history first, so this is reversible.",
+        confirmLabel: "Restore",
+      }))
+    ) {
       return;
     }
     setBusy(true);

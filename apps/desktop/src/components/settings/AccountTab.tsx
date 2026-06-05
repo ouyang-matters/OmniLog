@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useApp } from "../../store/appStore";
 import { Icon } from "../../assets/icons";
+import { confirmDialog } from "../../ui/dialog";
 
 /**
  * "Account" tab — change password + sign out. The sign-out button drops the
@@ -89,8 +90,15 @@ export function AccountTab() {
         </div>
         <button
           className="btn danger"
-          onClick={() => {
-            if (window.confirm("Sign out and return to the setup screen?")) {
+          onClick={async () => {
+            if (
+              await confirmDialog({
+                title: "Sign out?",
+                message: "You'll return to the setup screen. Your saved servers stay on this device.",
+                confirmLabel: "Sign out",
+                danger: true,
+              })
+            ) {
               void signOut();
               closeSettings();
             }

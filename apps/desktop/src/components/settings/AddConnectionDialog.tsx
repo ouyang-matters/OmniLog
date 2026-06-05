@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import type { ServerKind } from "@omnilog/shared";
 import { ApiClient as ApiClientClass } from "@omnilog/shared";
 import { useApp } from "../../store/appStore";
 import { rustFetch, testConnection } from "../../lib/api";
@@ -81,7 +80,8 @@ export function AddConnectionDialog({ onClose, onAdded }: Props) {
       }
       await addConnection({
         name: name.trim() || hostnameFromUrl(serverUrl) || "My server",
-        kind: kind === "official" ? "official" : "self-hosted",
+        // official is guarded out above, so this is always a self-hosted add
+        kind: "self-hosted",
         serverUrl: serverUrl.trim(),
         apiToken: token,
         deviceName: deviceName.trim() || "My Device",

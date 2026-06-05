@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { ServerConnection } from "@omnilog/shared";
 import { useApp } from "../store/appStore";
 import { AddConnectionDialog } from "./settings/AddConnectionDialog";
+import { confirmDialog } from "../ui/dialog";
 
 /**
  * Shown after sign-out when the client still remembers one or more saved
@@ -32,7 +33,15 @@ export function SignedOutLanding() {
   }
 
   async function onRemove(c: ServerConnection) {
-    if (!window.confirm(`Remove "${c.name}" from this device?`)) return;
+    if (
+      !(await confirmDialog({
+        title: "Remove server?",
+        message: `"${c.name}" will be removed from this device. Your data on the server is untouched.`,
+        confirmLabel: "Remove",
+        danger: true,
+      }))
+    )
+      return;
     await removeConnection(c.id);
   }
 

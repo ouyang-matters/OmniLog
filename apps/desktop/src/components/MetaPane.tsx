@@ -3,6 +3,7 @@ import { useApp } from "../store/appStore";
 import { HistoryModal } from "./HistoryModal";
 import { FolderPicker } from "./FolderPicker";
 import { isLocalId } from "../lib/drafts";
+import { confirmDialog } from "../ui/dialog";
 
 export function MetaPane() {
   const current = useApp((s) => s.current);
@@ -132,8 +133,16 @@ export function MetaPane() {
       <section className="meta-section">
         <button
           className="btn danger block"
-          onClick={() => {
-            if (confirm("Delete this entry?")) void deleteEntry(current.id);
+          onClick={async () => {
+            if (
+              await confirmDialog({
+                title: "Delete entry?",
+                message: `"${current.title || "Untitled"}" will be moved to trash.`,
+                confirmLabel: "Delete",
+                danger: true,
+              })
+            )
+              void deleteEntry(current.id);
           }}
         >
           Delete entry

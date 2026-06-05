@@ -4,6 +4,7 @@ import { ModeSwitcher } from "./editor/ModeSwitcher";
 import { RichEditor } from "./editor/RichEditor";
 import { LatexEditor } from "./editor/LatexEditor";
 import { MarkdownEditor } from "./editor/MarkdownEditor";
+import { confirmDialog } from "../ui/dialog";
 
 /**
  * Editor shell. Always renders the title input + mode switcher; dispatches the
@@ -28,14 +29,17 @@ export function EditorPane() {
 
   const mode = current.mode ?? "rich";
 
-  function onChangeMode(next: "rich" | "latex" | "markdown") {
+  async function onChangeMode(next: "rich" | "latex" | "markdown") {
     if (next === mode) return;
     // Soft confirm when leaving rich mode with non-trivial content — we wipe
     // the ProseMirror tree so the alternate editor has a clean slate.
     if (mode === "rich" && next !== "rich" && (current?.contentText.trim().length ?? 0) > 0) {
-      const ok = window.confirm(
-        `Switch to ${next}? The rich text will be discarded (the plain-text projection stays in place).`,
-      );
+      const ok = await confirmDialog({
+        title: `Switch to ${next} mode?`,
+        message: "The rich-text formatting will be discarded (your text stays as plain text).",
+        confirmLabel: "Switch",
+        danger: true,
+      });
       if (!ok) return;
     }
     setMode(next);

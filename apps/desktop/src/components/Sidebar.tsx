@@ -4,6 +4,7 @@ import { useApp } from "../store/appStore";
 import { Icon } from "../assets/icons";
 import { ShareModal } from "./ShareModal";
 import { FolderPicker, descendantsOf } from "./FolderPicker";
+import { alertDialog, confirmDialog, promptDialog } from "../ui/dialog";
 
 type MovePickerState =
   | { kind: "folder"; folder: Folder }
@@ -53,17 +54,21 @@ export function Sidebar() {
   );
 
   async function onNewFolder() {
-    const name = window.prompt("Folder name");
+    const name = await promptDialog({ title: "New folder", placeholder: "Folder name" });
     if (name && name.trim()) await createFolder(name.trim(), currentFolderId);
   }
 
   async function onRenameFolder(f: Folder) {
-    const next = window.prompt(`Rename "${f.name}" to:`, f.name);
+    const next = await promptDialog({
+      title: "Rename folder",
+      defaultValue: f.name,
+      confirmLabel: "Rename",
+    });
     if (!next || !next.trim() || next.trim() === f.name) return;
     try {
       await renameFolder(f._id, next.trim());
     } catch (e) {
-      window.alert(e instanceof Error ? e.message : "Failed to rename folder.");
+      await alertDialog({ message: e instanceof Error ? e.message : "Failed to rename folder." });
     }
   }
 
@@ -75,7 +80,7 @@ export function Sidebar() {
     try {
       await moveFolder(id, parentId);
     } catch (e) {
-      window.alert(e instanceof Error ? e.message : "Failed to move folder.");
+      await alertDialog({ message: e instanceof Error ? e.message : "Failed to move folder." });
     }
   }
 
@@ -86,7 +91,7 @@ export function Sidebar() {
     try {
       await moveEntry(id, folderId);
     } catch (e) {
-      window.alert(e instanceof Error ? e.message : "Failed to move entry.");
+      await alertDialog({ message: e instanceof Error ? e.message : "Failed to move entry." });
     }
   }
 
@@ -225,9 +230,17 @@ export function Sidebar() {
                     <button
                       className="folder-del"
                       title="Delete folder"
-                      onClick={(e) => {
+                      onClick={async (e) => {
                         e.stopPropagation();
-                        if (window.confirm(`Delete folder "${f.name}"?`)) void deleteFolder(f._id);
+                        if (
+                          await confirmDialog({
+                            title: "Delete folder?",
+                            message: `"${f.name}" must be empty. Its documents and subfolders are not deleted.`,
+                            confirmLabel: "Delete",
+                            danger: true,
+                          })
+                        )
+                          void deleteFolder(f._id);
                       }}
                     >
                       <Icon name="close" size={13} />

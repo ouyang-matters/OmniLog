@@ -4,6 +4,51 @@ A running journal of changes to OmniLog. Newest entries on top.
 
 ---
 
+## 2026-06-04 - Build fixes, custom dialogs, rounded icon, editor UX
+
+### Fixed (the repo had never been compiled - these were the build errors)
+- `packages/shared/src/types.ts`: `License` was missing `status` /
+  `currentPeriodEnd` (and `stripeCustomerId` / `userId` / `updatedAt`) that
+  `BillingTab` and the server `License` model already use.
+- `AddConnectionDialog.tsx`: removed an unused `ServerKind` import; a
+  `kind === "official"` comparison was dead after the official-disabled guard
+  (TS no-overlap error) - replaced with `kind: "self-hosted"`.
+- Verified: server `cargo build` clean, desktop `tsc` clean, full `tauri build`
+  produces MSI + NSIS.
+
+### Added - custom dialog system
+- `src/ui/dialog.tsx`: app-styled `confirmDialog` / `promptDialog` /
+  `alertDialog` (Promise-based), rendered by a `DialogHost` at the app root.
+  Theme-aware, animated, Esc/Enter/backdrop handling, red confirm for
+  destructive actions.
+- Replaced all 22 native `window.confirm/alert/prompt` calls across 11 files.
+- Destructive/major operations now confirm: delete entry/folder/user, restore
+  version, reset password, **revoke folder share** (previously silent), sign
+  out, remove/rename connection, switch editor mode.
+
+### Added - editor UX
+- **Markdown / LaTeX editors**: replaced the fixed two-box split with a shared
+  `SourceEditor` that has an **Edit / Both / Preview** view toggle. Renderers
+  extracted to `sourceRender.ts` (parametrized by a math emitter).
+- **Content syncs to rich text**: `sourceConvert.ts` uses a headless TipTap
+  editor (shared `richExtensions.ts` schema) to convert Markdown/LaTeX source -
+  including math - into a real rich document. `store.setMode` converts on switch
+  into rich instead of discarding content.
+- **Inline formula editing**: the rich editor no longer opens a modal for
+  formulas. Both inline and block math insert an empty node and open an in-place
+  popover anchored at it (`InlineMathPopover` gained a `display` mode with a
+  multiline input). `MathDialog` is retired.
+
+### Changed
+- App icon rounded (~20% corner radius) and the full icon set regenerated.
+
+### Notes
+- Working tree moved off Google Drive to `C:\dev\OmniLog-gh` (the Drive/git
+  race the first commit warned about). GitHub is authoritative.
+- `Cargo.lock` files now committed for reproducible builds.
+
+---
+
 ## 2026-06-04 — Repository initialised + first commit
 
 ### Added

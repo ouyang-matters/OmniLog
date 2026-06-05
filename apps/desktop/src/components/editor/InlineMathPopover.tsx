@@ -3,6 +3,8 @@ import katex from "katex";
 
 interface Props {
   initialLatex: string;
+  /** Block (display) formula vs inline. Block gets a multi-line input. */
+  display?: boolean;
   /** Position relative to the editor host (px). null = center fallback. */
   anchor: { left: number; top: number } | null;
   onSubmit: (latex: string) => void;
@@ -10,14 +12,15 @@ interface Props {
 }
 
 /**
- * Small floating editor for inline formulas, anchored just under the node.
- * Live KaTeX preview as you type; Enter or Ctrl+Enter confirms, Esc closes.
- * Click-outside also closes. This replaces the heavyweight modal for inline
- * math; block math still uses MathDialog for the templates + larger area.
+ * Floating in-place editor for a formula, anchored at its node. Live KaTeX
+ * preview as you type. Used for BOTH inline and block math so inserting a
+ * formula never opens a modal dialog — it becomes an editable formula right in
+ * the document. Inline: Enter confirms. Block: Ctrl/Cmd+Enter confirms (Enter
+ * inserts a newline). Esc closes; click-away saves.
  */
-export function InlineMathPopover({ initialLatex, anchor, onSubmit, onClose }: Props) {
+export function InlineMathPopover({ initialLatex, display = false, anchor, onSubmit, onClose }: Props) {
   const [latex, setLatex] = useState(initialLatex);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement | HTMLInputElement | null>(null);
   const popRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -28,8 +31,6 @@ export function InlineMathPopover({ initialLatex, anchor, onSubmit, onClose }: P
   useEffect(() => {
     function onDoc(e: MouseEvent) {
       if (popRef.current && !popRef.current.contains(e.target as Node)) {
-        // Save on click-away rather than discarding, so a stray click doesn't
-        // lose work. Empty input is treated as "remove" (caller decides).
         onSubmit(latex);
       }
     }
@@ -51,45 +52,61 @@ export function InlineMathPopover({ initialLatex, anchor, onSubmit, onClose }: P
     if (!latex.trim()) return "";
     try {
       return katex.renderToString(latex, {
-        displayMode: false,
+        displayMode: display,
         throwOnError: false,
         errorColor: "#e5484d",
       });
     } catch {
       return "";
     }
-  }, [latex]);
+  }, [latex, display]);
 
   const style: React.CSSProperties = anchor
     ? { left: anchor.left, top: anchor.top }
     : { left: "50%", top: 80, transform: "translateX(-50%)" };
 
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && (!display || e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      onSubmit(latex);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      onClose();
+    }
+  };
+
   return (
-    <div ref={popRef} className="inline-math-popover" style={style}>
-      <input
-        ref={inputRef}
-        type="text"
-        className="inline-math-input"
-        spellCheck={false}
-        value={latex}
-        placeholder="LaTeX, e.g. \\frac{a}{b}"
-        onChange={(e) => setLatex(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            onSubmit(latex);
-          } else if (e.key === "Escape") {
-            e.preventDefault();
-            onClose();
-          }
-        }}
-      />
+    <div ref={popRef} className={`inline-math-popover ${display ? "block" : ""}`} style={style}>
+      {display ? (
+        <textarea
+          ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+          className="inline-math-input"
+          spellCheck={false}
+          rows={3}
+          value={latex}
+          placeholder="LaTeX, e.g. \\int_0^1 x\\,dx"
+          onChange={(e) => setLatex(e.target.value)}
+          onKeyDown={onKeyDown}
+        />
+      ) : (
+        <input
+          ref={inputRef as React.RefObject<HTMLInputElement>}
+          type="text"
+          className="inline-math-input"
+          spellCheck={false}
+          value={latex}
+          placeholder="LaTeX, e.g. \\frac{a}{b}"
+          onChange={(e) => setLatex(e.target.value)}
+          onKeyDown={onKeyDown}
+        />
+      )}
       <div
-        className="inline-math-preview"
+        className={`inline-math-preview ${display ? "block" : ""}`}
         dangerouslySetInnerHTML={{
           __html: previewHtml || "<span class=\"muted\">preview</span>",
         }}
       />
+      {display && <div className="inline-math-hint muted">Ctrl+Enter to apply</div>}
     </div>
   );
 }

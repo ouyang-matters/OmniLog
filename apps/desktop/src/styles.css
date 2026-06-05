@@ -395,6 +395,33 @@ button { font-family: inherit; cursor: pointer; }
 .math-preview-label { font-size: 12px; margin: 12px 0 6px; }
 .math-preview { min-height: 48px; background: var(--bg-sunken); border-radius: var(--radius); padding: 12px; display: grid; place-items: center; overflow-x: auto; }
 
+/* ---- Custom dialog (confirm / prompt / alert) ---- */
+.dialog-backdrop {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(2px);
+  display: grid; place-items: center;
+  animation: dialog-fade 0.12s ease-out;
+}
+.dialog {
+  width: 400px; max-width: 92vw;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 14px; padding: 22px 22px 18px; box-shadow: var(--shadow);
+  animation: dialog-pop 0.14s cubic-bezier(0.2, 0.8, 0.3, 1.2);
+}
+.dialog-title { margin: 0 0 8px; font-size: 17px; font-weight: 650; }
+.dialog-message { margin: 0; color: var(--text-muted); font-size: 14px; line-height: 1.5; }
+.dialog-input {
+  width: 100%; margin-top: 16px; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg-elev); color: var(--text); font-size: 14px;
+}
+.dialog-input:focus { outline: none; border-color: var(--accent); }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+.btn.danger-solid { background: var(--danger); border-color: var(--danger); color: #fff; }
+.btn.danger-solid:hover:not(:disabled) { filter: brightness(1.08); }
+@keyframes dialog-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes dialog-pop { from { opacity: 0; transform: translateY(6px) scale(0.97); } to { opacity: 1; transform: none; } }
+
 /* ---- Settings & history ---- */
 .settings-section { margin-bottom: 20px; }
 .settings-section h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); }
@@ -551,6 +578,19 @@ button { font-family: inherit; cursor: pointer; }
   .source-split { grid-template-columns: 1fr; }
 }
 
+/* ---- Source editor with Edit / Both / Preview ---- */
+.source-editor { display: flex; flex-direction: column; gap: 10px; }
+.source-toolbar { display: flex; justify-content: flex-end; }
+.source-view button { padding: 5px 14px; font-size: 13px; }
+.source-body { gap: 12px; min-height: 62vh; }
+.source-body.view-split { display: grid; grid-template-columns: 1fr 1fr; }
+.source-body.view-edit, .source-body.view-preview { display: block; }
+.source-body.view-edit .source-input,
+.source-body.view-preview .source-preview { min-height: 62vh; }
+@media (max-width: 900px) {
+  .source-body.view-split { grid-template-columns: 1fr; }
+}
+
 /* ---- Settings page (replaces SettingsModal) ---- */
 .settings-page {
   height: 100%;
@@ -657,6 +697,10 @@ button { font-family: inherit; cursor: pointer; }
   font-size: 13px;
   outline: none;
 }
+.inline-math-popover.block { width: 420px; }
+.inline-math-popover.block .inline-math-input { resize: vertical; min-height: 56px; }
+.inline-math-hint { font-size: 11px; text-align: right; }
+.inline-math-preview.block { text-align: center; padding: 8px; }
 .inline-math-input:focus { border-color: var(--accent); }
 .inline-math-preview {
   min-height: 24px;

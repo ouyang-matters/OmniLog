@@ -3,6 +3,7 @@ import type { PublicUser, Role } from "@omnilog/shared";
 import { getClient, useApp } from "../../store/appStore";
 import { Icon } from "../../assets/icons";
 import { AvatarFrame } from "./ProfileTab";
+import { alertDialog, confirmDialog, promptDialog } from "../../ui/dialog";
 
 /**
  * "Users" tab — admin can manage `user` accounts; owner can also manage
@@ -66,12 +67,17 @@ export function UsersTab() {
   async function onResetPassword(u: PublicUser) {
     const client = getClient();
     if (!client) return;
-    const next = window.prompt(`Set a new password for "${u.username}":`, "");
+    const next = await promptDialog({
+      title: `Reset password`,
+      message: `Set a new password for "${u.username}".`,
+      placeholder: "New password",
+      confirmLabel: "Reset",
+    });
     if (!next) return;
     setError(null);
     try {
       await client.updateUser(u.id, { password: next });
-      window.alert(`Password reset for ${u.username}.`);
+      await alertDialog({ title: "Password reset", message: `Password reset for ${u.username}.` });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to reset password.");
     }
@@ -80,7 +86,12 @@ export function UsersTab() {
   async function onEditDisplayName(u: PublicUser) {
     const client = getClient();
     if (!client) return;
-    const next = window.prompt(`Display name for "${u.username}":`, u.displayName ?? "");
+    const next = await promptDialog({
+      title: "Display name",
+      message: `Display name for "${u.username}".`,
+      defaultValue: u.displayName ?? "",
+      confirmLabel: "Save",
+    });
     if (next === null) return;
     setError(null);
     try {
@@ -94,7 +105,14 @@ export function UsersTab() {
   async function onDelete(u: PublicUser) {
     const client = getClient();
     if (!client) return;
-    if (!window.confirm(`Delete user "${u.username}"? Their folders and entries are kept.`)) {
+    if (
+      !(await confirmDialog({
+        title: `Delete user "${u.username}"?`,
+        message: "Their folders and entries are kept. Shares granted to them are revoked.",
+        confirmLabel: "Delete user",
+        danger: true,
+      }))
+    ) {
       return;
     }
     setError(null);

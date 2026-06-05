@@ -216,13 +216,22 @@ export type ServerKind = "local-embedded" | "self-hosted" | "official";
  * license endpoint, but the field is optional everywhere.
  */
 export interface License {
+  /** Owner user id (server returns this as the row id). */
+  userId?: string;
   plan: "free" | "pro" | "team";
+  /** Stripe subscription status verbatim (e.g. "active", "past_due"). */
+  status?: string;
+  /** ISO timestamp the current paid period ends. */
+  currentPeriodEnd?: string;
+  /** Stripe customer id. Display-only. */
+  stripeCustomerId?: string;
   /** ISO timestamp. Absent = unlimited / lifetime. */
   expiresAt?: string;
   /** Opaque subscription id from the billing system. Display-only. */
   subscriptionId?: string;
   /** Free-form features unlocked by this plan (e.g. "cloud-backup"). */
   features?: string[];
+  updatedAt?: string;
 }
 
 /**

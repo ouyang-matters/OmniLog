@@ -1,6 +1,7 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import type { Editor } from "@tiptap/core";
 import { getClient } from "../../store/appStore";
+import { promptDialog } from "../../ui/dialog";
 
 /**
  * Custom image node. The persisted `contentJson` stores a stable `assetId`
@@ -154,12 +155,18 @@ export const ImageNode = Node.create({
       capBtn.className = "img-ctrl";
       capBtn.addEventListener("click", (e) => {
         e.preventDefault();
-        const next = window.prompt("Image caption", attrs.caption || "");
-        if (next !== null) {
-          attrs = { ...attrs, caption: next };
-          render();
-          setAttrs({ caption: next });
-        }
+        void promptDialog({
+          title: "Image caption",
+          defaultValue: attrs.caption || "",
+          placeholder: "Describe the image",
+          confirmLabel: "Save",
+        }).then((next) => {
+          if (next !== null) {
+            attrs = { ...attrs, caption: next };
+            render();
+            setAttrs({ caption: next });
+          }
+        });
       });
       controls.appendChild(capBtn);
 

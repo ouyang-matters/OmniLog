@@ -3,6 +3,7 @@ import type { ServerConnection } from "@omnilog/shared";
 import { useApp } from "../../store/appStore";
 import { Icon } from "../../assets/icons";
 import { AddConnectionDialog } from "./AddConnectionDialog";
+import { confirmDialog, promptDialog } from "../../ui/dialog";
 
 /**
  * "Connections" tab — manage every saved server. Pick one as active (switches
@@ -32,7 +33,11 @@ export function ConnectionsTab() {
   }
 
   async function onRename(c: ServerConnection) {
-    const next = window.prompt(`Rename "${c.name}" to:`, c.name);
+    const next = await promptDialog({
+      title: "Rename connection",
+      defaultValue: c.name,
+      confirmLabel: "Rename",
+    });
     if (next === null) return;
     const trimmed = next.trim();
     if (!trimmed || trimmed === c.name) return;
@@ -46,9 +51,17 @@ export function ConnectionsTab() {
   async function onRemove(c: ServerConnection) {
     const msg =
       c.id === activeId
-        ? `Remove "${c.name}"? You will be signed out and switched to another saved server (if any).`
-        : `Remove "${c.name}"? The saved URL and credentials will be deleted from this device. Your data on the server is not touched.`;
-    if (!window.confirm(msg)) return;
+        ? "You will be signed out and switched to another saved server (if any)."
+        : "The saved URL and credentials are deleted from this device. Your data on the server is not touched.";
+    if (
+      !(await confirmDialog({
+        title: `Remove "${c.name}"?`,
+        message: msg,
+        confirmLabel: "Remove",
+        danger: true,
+      }))
+    )
+      return;
     setError(null);
     try {
       await removeConnection(c.id);

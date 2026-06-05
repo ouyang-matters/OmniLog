@@ -12,6 +12,7 @@ import type {
 } from "@omnilog/shared";
 import { ApiClient as ApiClientClass } from "@omnilog/shared";
 import { createApiClient, rustFetch } from "../lib/api";
+import { sourceToDoc } from "../components/editor/sourceConvert";
 import {
   connectionToConfig,
   getDeviceId,
@@ -666,16 +667,18 @@ export const useApp = create<AppState>((set, get) => ({
   setMode(mode) {
     const cur = get().current;
     if (!cur || cur.mode === mode) return;
-    // Switching mode is structural — we clear the rich-text JSON so the new
-    // editor doesn't try to render foreign content; existing `contentText` is
-    // preserved so a markdown↔latex switch keeps the source.
+    // Switching INTO rich from a source mode converts the Markdown/LaTeX source
+    // into a real rich document (headings, lists, emphasis, math nodes) so the
+    // content syncs across modes instead of being discarded. markdown<->latex
+    // keep the same source text.
+    const contentJson =
+      mode === "rich" && (cur.mode === "markdown" || cur.mode === "latex")
+        ? sourceToDoc(cur.mode, cur.contentText)
+        : cur.contentJson;
     const next: Draft = {
       ...cur,
       mode,
-      contentJson:
-        mode === "rich"
-          ? { type: "doc", content: [{ type: "paragraph" }] }
-          : cur.contentJson,
+      contentJson,
       updatedAt: new Date().toISOString(),
       dirty: true,
     };
