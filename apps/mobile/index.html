@@ -6,7 +6,19 @@
     <title>OmniLog</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <h1 style="color:red;font-size:48px;text-align:center;margin-top:200px;">LOADING...</h1>
+    </div>
+    <script>
+      window.onerror = function(msg, url, line, col, err) {
+        document.getElementById('root').innerHTML =
+          '<pre style="color:red;padding:20px;font-size:14px;">ERROR: ' + msg + '\n' + url + ':' + line + ':' + col + '\n' + (err ? err.stack : '') + '</pre>';
+      };
+      window.addEventListener('unhandledrejection', function(e) {
+        document.getElementById('root').innerHTML =
+          '<pre style="color:red;padding:20px;font-size:14px;">PROMISE ERROR: ' + (e.reason ? (e.reason.message || e.reason) : e) + '\n' + (e.reason && e.reason.stack ? e.reason.stack : '') + '</pre>';
+      });
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
