@@ -78,6 +78,9 @@ pub trait Storage: Send + Sync {
     /// Count non-deleted entries directly in a folder (for delete guards).
     async fn count_entries_in_folder(&self, folder_id: &str) -> AppResult<u64>;
 
+    /// Count a user's non-deleted entries across all folders (for plan limits).
+    async fn count_entries(&self, user_id: &str) -> AppResult<u64>;
+
     // --- Users ---
     async fn count_users(&self) -> AppResult<u64>;
     async fn create_user(&self, user: &User) -> AppResult<()>;

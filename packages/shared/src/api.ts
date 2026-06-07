@@ -37,6 +37,7 @@ export const API_ROUTES = {
   folderShare: (id: string, userId: string) => `/api/folders/${id}/shares/${userId}`,
   settings: "/api/settings",
   login: "/api/auth/login",
+  register: "/api/auth/register",
   me: "/api/auth/me",
   changePassword: "/api/auth/change-password",
   users: "/api/users",
@@ -151,7 +152,7 @@ export class ApiClient {
     });
   }
 
-  updateFolder(id: string, input: { name?: string; parentId?: string }): Promise<Folder> {
+  updateFolder(id: string, input: { name?: string; parentId?: string | null }): Promise<Folder> {
     return this.request<Folder>(API_ROUTES.folder(id), {
       method: "PATCH",
       body: JSON.stringify(input),
@@ -167,6 +168,15 @@ export class ApiClient {
     return this.request<LoginResponse>(
       API_ROUTES.login,
       { method: "POST", body: JSON.stringify({ username, password }) },
+      false,
+    );
+  }
+
+  /** Public registration (official server). Sends an email-verification link. */
+  register(username: string, email: string, password: string): Promise<{ ok: boolean; message: string }> {
+    return this.request<{ ok: boolean; message: string }>(
+      API_ROUTES.register,
+      { method: "POST", body: JSON.stringify({ username, email, password }) },
       false,
     );
   }

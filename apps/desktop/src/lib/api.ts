@@ -1,5 +1,12 @@
-import { ApiClient, type FetchLike, type ServerConfig } from "@omnilog/shared";
+import {
+  ApiClient,
+  type FetchLike,
+  type KeyValueStore,
+  LocalApiClient,
+  type ServerConfig,
+} from "@omnilog/shared";
 import { invoke } from "@tauri-apps/api/core";
+import { getStore } from "./store";
 
 /**
  * HTTP transport that runs in Rust (reqwest) via Tauri commands rather than in
@@ -91,6 +98,24 @@ export function createApiClient(cfg: ServerConfig): ApiClient {
     token: cfg.apiToken,
     fetch: rustFetch,
   });
+}
+
+/** Adapter over the desktop Tauri store for the local (offline) client. */
+const kvStore: KeyValueStore = {
+  async get<T>(key: string): Promise<T | null> {
+    const s = await getStore();
+    return (await s.get<T>(key)) ?? null;
+  },
+  async set(key: string, value: unknown): Promise<void> {
+    const s = await getStore();
+    await s.set(key, value);
+    await s.save();
+  },
+};
+
+/** Build a no-network client backed by on-device storage (offline mode). */
+export function createLocalClient(deviceId: string): LocalApiClient {
+  return new LocalApiClient(kvStore, deviceId);
 }
 
 /**

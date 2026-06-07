@@ -5,6 +5,9 @@ const CONNECTIONS_KEY = "connections";
 const ACTIVE_KEY = "activeConnectionId";
 const DEVICE_ID_KEY = "deviceId";
 
+/** The hosted OmniLog service (register/login, plan-limited). */
+export const OFFICIAL_SERVER_URL = "https://dev.aqouyang.com/api/omnilog";
+
 function uuid(): string {
   return crypto.randomUUID();
 }
@@ -65,7 +68,10 @@ export function newConnection(
 }
 
 export function isConnectionUsable(c: ServerConnection | null | undefined): c is ServerConnection {
-  return !!c && c.serverUrl.trim().length > 0 && c.apiToken.trim().length > 0;
+  if (!c) return false;
+  // Offline connections have no URL/token but are always "connectable".
+  if (c.kind === "offline") return true;
+  return c.serverUrl.trim().length > 0 && c.apiToken.trim().length > 0;
 }
 
 export function connectionToConfig(c: ServerConnection, deviceId: string): ServerConfig {

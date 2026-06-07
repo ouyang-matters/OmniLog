@@ -45,6 +45,15 @@ pub async fn create(
     if input.date.trim().is_empty() {
         return Err(AppError::BadRequest("date is required".into()));
     }
+    // Free-plan entry cap (official server only; self-hosted is unlimited).
+    let lim = crate::limits::effective_limits(&state, &auth).await?;
+    if let Some(max) = lim.max_entries {
+        if state.storage.count_entries(&auth.id).await? >= max {
+            return Err(AppError::PaymentRequired(format!(
+                "Free plan is limited to {max} notes. Upgrade to Pro for unlimited notes."
+            )));
+        }
+    }
     let folder_id = input.folder_id.filter(|s| !s.is_empty());
     if let Some(fid) = &folder_id {
         match access::folder_role(&state, &auth, fid).await? {

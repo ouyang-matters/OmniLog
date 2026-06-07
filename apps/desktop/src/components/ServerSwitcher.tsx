@@ -103,6 +103,7 @@ function KindBadge({ kind }: { kind: ServerConnection["kind"] }) {
     "local-embedded": { text: "local", cls: "kind-local" },
     "self-hosted": { text: "self", cls: "kind-self" },
     "official": { text: "official", cls: "kind-official" },
+    "offline": { text: "offline", cls: "kind-local" },
   };
   const { text, cls } = labels[kind];
   return <span className={`kind-badge ${cls}`}>{text}</span>;

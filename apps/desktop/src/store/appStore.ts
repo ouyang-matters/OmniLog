@@ -10,8 +10,8 @@ import type {
   ServerSettings,
   WorklogEntry,
 } from "@omnilog/shared";
-import { ApiClient as ApiClientClass } from "@omnilog/shared";
-import { createApiClient, rustFetch } from "../lib/api";
+import { ApiClient as ApiClientClass, ApiError } from "@omnilog/shared";
+import { createApiClient, createLocalClient, rustFetch } from "../lib/api";
 import { sourceToDoc, docToMarkdown, docToLatex } from "../components/editor/sourceConvert";
 import {
   connectionToConfig,
@@ -85,11 +85,15 @@ interface AppState {
   view: View;
   /** Optional deep-link target for the settings page (e.g. "connections"). */
   settingsTab: string | null;
+  /** Message for the upgrade prompt when a plan limit (402) is hit; null = none. */
+  upgrade: string | null;
 
   init: () => Promise<void>;
   completeSetup: (cfg: Omit<ServerConfig, "deviceId">) => Promise<void>;
   quickStartLocalServer: (port?: number) => Promise<void>;
   loginAndConnect: (input: { serverUrl: string; username: string; password: string; deviceName: string }) => Promise<void>;
+  /** Create and switch to a purely-local, no-account, offline connection. */
+  startOffline: () => Promise<void>;
   resetConfig: () => Promise<void>;
   /** Alias for resetConfig — used by the Sign-out button. */
   signOut: () => Promise<void>;
@@ -114,6 +118,9 @@ interface AppState {
   updateProfile: (input: { displayName?: string; avatarDataUrl?: string }) => Promise<void>;
   openSettings: () => void;
   closeSettings: () => void;
+  openBilling: () => void;
+  setUpgrade: (message: string) => void;
+  dismissUpgrade: () => void;
 
   loadFolders: () => Promise<void>;
   createFolder: (name: string, parentId: string | null) => Promise<void>;
@@ -152,6 +159,17 @@ let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
 export function getClient(): ApiClient | null {
   return client;
+}
+
+/** Offline connections use an on-device client; everything else uses HTTP. */
+function clientForConnection(c: ServerConnection): ApiClient | null {
+  if (c.kind === "offline") return createLocalClient(deviceId);
+  if (!isConnectionUsable(c)) return null;
+  return createApiClient(connectionToConfig(c, deviceId));
+}
+
+function configForConnection(c: ServerConnection): ServerConfig | null {
+  return c.kind === "offline" ? null : connectionToConfig(c, deviceId);
 }
 
 function today(): string {
@@ -197,6 +215,7 @@ export const useApp = create<AppState>((set, get) => ({
   messages: [],
   view: "editor",
   settingsTab: null,
+  upgrade: null,
 
   async init() {
     deviceId = await getDeviceId();
@@ -214,7 +233,7 @@ export const useApp = create<AppState>((set, get) => ({
     }
     // If this is a client-managed local server, re-spawn it before connecting
     // (the process does not survive an app restart).
-    if (active.managedLocal) {
+    if (active.managedLocal && active.kind !== "offline") {
       try {
         const port = parsePort(active.serverUrl) ?? DEFAULT_LOCAL_PORT;
         await startLocalServer(port, active.apiToken);
@@ -223,9 +242,8 @@ export const useApp = create<AppState>((set, get) => ({
         // If it fails to start, we still enter the app in offline mode below.
       }
     }
-    const cfg = connectionToConfig(active, deviceId);
-    client = createApiClient(cfg);
-    set({ phase: "ready", config: cfg });
+    client = clientForConnection(active);
+    set({ phase: "ready", config: configForConnection(active) });
     await get().refresh();
     await get().loadFolders();
     await get().loadMe();
@@ -310,6 +328,17 @@ export const useApp = create<AppState>((set, get) => ({
     });
   },
 
+  async startOffline() {
+    await get().addConnection({
+      name: "Offline (this device)",
+      kind: "offline",
+      serverUrl: "",
+      apiToken: "",
+      deviceName: "This device",
+      activate: true,
+    });
+  },
+
   async loadFolders() {
     if (!client) return;
     try {
@@ -321,8 +350,16 @@ export const useApp = create<AppState>((set, get) => ({
 
   async createFolder(name, parentId) {
     if (!client) return;
-    const folder = await client.createFolder({ name, parentId });
-    set({ folders: [...get().folders, folder] });
+    try {
+      const folder = await client.createFolder({ name, parentId });
+      set({ folders: [...get().folders, folder] });
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 402) {
+        set({ upgrade: e.message });
+        return;
+      }
+      throw e;
+    }
   },
 
   async renameFolder(id, name) {
@@ -485,7 +522,7 @@ export const useApp = create<AppState>((set, get) => ({
     }
 
     // Spin up the new one if it's managed local.
-    if (target.managedLocal) {
+    if (target.managedLocal && target.kind !== "offline") {
       try {
         const port = parsePort(target.serverUrl) ?? DEFAULT_LOCAL_PORT;
         await startLocalServer(port, target.apiToken);
@@ -495,8 +532,8 @@ export const useApp = create<AppState>((set, get) => ({
       }
     }
 
-    const cfg = connectionToConfig(target, deviceId);
-    client = createApiClient(cfg);
+    const cfg = configForConnection(target);
+    client = clientForConnection(target);
 
     // Record `lastConnectedAt` so the connections list can sort by recency
     // and so we know when the last touch was.
@@ -597,6 +634,18 @@ export const useApp = create<AppState>((set, get) => ({
 
   closeSettings() {
     set({ view: "editor" });
+  },
+
+  openBilling() {
+    set({ view: "settings", settingsTab: "billing", upgrade: null });
+  },
+
+  setUpgrade(message) {
+    set({ upgrade: message });
+  },
+
+  dismissUpgrade() {
+    set({ upgrade: null });
   },
 
   async refresh() {
@@ -812,7 +861,16 @@ export const useApp = create<AppState>((set, get) => ({
   async restoreVersion(version) {
     const id = get().currentId;
     if (!id || !client || isLocalId(id)) return;
-    const updated = await client.restoreVersion(id, version);
+    let updated;
+    try {
+      updated = await client.restoreVersion(id, version);
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 402) {
+        set({ upgrade: e.message });
+        return;
+      }
+      throw e;
+    }
     await saveDraft(entryToDraft(updated, false));
     set({
       current:
@@ -900,7 +958,13 @@ async function syncDraft(
         ),
       });
     }
-  } catch {
+  } catch (e) {
+    // A plan limit (402) is not an offline condition — surface an upgrade
+    // prompt and keep the draft locally (still dirty, not lost).
+    if (e instanceof ApiError && e.status === 402) {
+      set({ saveState: "error", upgrade: e.message });
+      return;
+    }
     // Stay dirty; the edit is safe in the local store. Try again on reconnect.
     set({ online: false, saveState: "offline" });
   }

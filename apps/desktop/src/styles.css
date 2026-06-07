@@ -122,6 +122,9 @@ button { font-family: inherit; cursor: pointer; }
 }
 .mode-option.selected { border-color: var(--accent); background: var(--bg-elev); }
 .mode-option.disabled { opacity: 0.55; cursor: not-allowed; }
+.official-cta { width: 100%; text-align: left; background: transparent; color: inherit; font: inherit; align-items: center; }
+.official-cta:hover { border-color: var(--accent); background: var(--bg-elev); }
+.official-arrow { margin-left: auto; font-size: 22px; color: var(--text-muted); }
 .mode-option div { display: flex; flex-direction: column; gap: 2px; }
 .mode-option input { margin-top: 3px; }
 .badge {

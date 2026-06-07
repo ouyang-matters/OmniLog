@@ -21,6 +21,11 @@ pub async fn upload_image(
     Extension(auth): Extension<AuthUser>,
     mut multipart: Multipart,
 ) -> AppResult<Json<Asset>> {
+    if !crate::limits::effective_limits(&state, &auth).await?.images {
+        return Err(AppError::PaymentRequired(
+            "Image upload is a Pro feature. Upgrade to attach images.".into(),
+        ));
+    }
     let mut entry_id: Option<String> = None;
     let mut caption: Option<String> = None;
     let mut original_name: Option<String> = None;

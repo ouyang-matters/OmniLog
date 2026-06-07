@@ -10,6 +10,11 @@ router.get('/docs', (req, res) => {
   res.render('omnilog/docs');
 });
 
+// GET /omnilog/pricing
+router.get('/pricing', (req, res) => {
+  res.render('omnilog/pricing');
+});
+
 // GET /omnilog/privacy
 router.get('/privacy', (req, res) => {
   res.render('omnilog/privacy');

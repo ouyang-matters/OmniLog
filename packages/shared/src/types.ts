@@ -204,11 +204,12 @@ export interface ServerInfo {
  * - `local-embedded` — the client-managed one-click local server (Tauri
  *   spawns the bundled binary; it's re-started on launch).
  * - `self-hosted` — an arbitrary server URL the user pointed at.
- * - `official` — Anthropic-of-OmniLog's hosted service. Not yet live;
- *   reserved so the client knows to fetch a license and show a plan badge
- *   once the hosted service ships.
+ * - `official` — the hosted OmniLog service (register/login; usage limited by
+ *   plan).
+ * - `offline` — no server at all. Entries, folders, and images live purely on
+ *   this device and are never synced. No account, no usage limits.
  */
-export type ServerKind = "local-embedded" | "self-hosted" | "official";
+export type ServerKind = "local-embedded" | "self-hosted" | "official" | "offline";
 
 /**
  * Subscription / entitlement returned by the (future) official hosted service.

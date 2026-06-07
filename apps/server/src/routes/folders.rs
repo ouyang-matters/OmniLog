@@ -57,6 +57,15 @@ pub async fn create(
     if name.is_empty() {
         return Err(AppError::BadRequest("folder name is required".into()));
     }
+    // Free-plan folder cap (official server only).
+    let lim = crate::limits::effective_limits(&state, &auth).await?;
+    if let Some(max) = lim.max_folders {
+        if state.storage.list_folders(&auth.id).await?.len() as u64 >= max {
+            return Err(AppError::PaymentRequired(format!(
+                "Free plan is limited to {max} folders. Upgrade to Pro for unlimited folders."
+            )));
+        }
+    }
     let parent_id = input.parent_id.filter(|s| !s.is_empty());
     if let Some(ref pid) = parent_id {
         if state.storage.get_folder(pid).await?.is_none() {

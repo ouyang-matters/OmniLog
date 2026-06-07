@@ -3,6 +3,7 @@ mod billing;
 mod config;
 mod email;
 mod error;
+mod limits;
 mod models;
 mod rate_limit;
 mod routes;

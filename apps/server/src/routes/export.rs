@@ -3,7 +3,7 @@ use axum::{Extension, Json};
 use serde::{Deserialize, Serialize};
 
 use crate::auth::AuthUser;
-use crate::error::AppResult;
+use crate::error::{AppError, AppResult};
 use crate::models::entry::Entry;
 use crate::models::{new_id, now_rfc3339};
 use crate::state::AppState;
@@ -37,6 +37,11 @@ pub async fn export(
     Extension(auth): Extension<AuthUser>,
     Json(input): Json<ExportInput>,
 ) -> AppResult<Json<ExportResult>> {
+    if !crate::limits::effective_limits(&state, &auth).await?.export {
+        return Err(AppError::PaymentRequired(
+            "Export is a Pro feature. Upgrade to export your notes.".into(),
+        ));
+    }
     let entries = state
         .storage
         .export_entries(&auth.id, input.entry_ids.as_deref())

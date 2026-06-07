@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OmniLog | Pricing</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+html { height: 100%; background: #f8fafc; } body { background: #f8fafc; color: #0f172a; min-height: 100vh; display: flex; flex-direction: column; }
+.ol-page { max-width: 980px; margin: 60px auto; padding: 0 24px; font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; flex: 1; }
+.ol-badge { display: inline-block; background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; border-radius: 20px; padding: 4px 14px; font-size: 12px; font-weight: 600; margin-bottom: 16px; letter-spacing: .04em; text-transform: uppercase; }
+.ol-page h1 { font-size: 36px; font-weight: 700; color: #0f172a; margin: 0 0 10px; }
+.ol-page h1 span { color: #16a34a; }
+.ol-page .subtitle { font-size: 17px; color: #64748b; margin: 0 0 40px; line-height: 1.6; }
+.back-link { display: inline-block; color: #64748b; font-size: 13px; text-decoration: none; margin-bottom: 24px; }
+.back-link:hover { color: #0f172a; }
+.ol-btn { display: inline-block; padding: 12px 22px; background: #16a34a; color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; text-decoration: none; transition: background .15s; }
+.ol-btn:hover { background: #15803d; }
+.ol-btn-disabled { display: inline-block; width: 100%; box-sizing: border-box; text-align: center; padding: 12px 22px; background: #e2e8f0; color: #94a3b8; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: not-allowed; text-decoration: none; }
+
+.pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 8px 0 28px; }
+.plan { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 28px 24px; display: flex; flex-direction: column; box-shadow: 0 1px 4px rgba(0,0,0,.04); position: relative; }
+.plan.featured { border-color: #16a34a; box-shadow: 0 6px 24px rgba(22,163,74,.12); }
+.plan-name { font-size: 15px; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: .04em; }
+.plan-popular { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); background: #16a34a; color: #fff; font-size: 11px; font-weight: 700; padding: 3px 12px; border-radius: 20px; letter-spacing: .04em; }
+.plan-price { font-size: 38px; font-weight: 800; color: #0f172a; margin: 14px 0 2px; }
+.plan-price small { font-size: 15px; font-weight: 500; color: #94a3b8; }
+.plan-tagline { font-size: 13px; color: #64748b; min-height: 34px; margin-bottom: 16px; }
+.plan ul { list-style: none; padding: 0; margin: 0 0 22px; flex: 1; }
+.plan li { font-size: 13.5px; color: #374151; padding: 6px 0; display: flex; align-items: flex-start; gap: 8px; border-top: 1px solid #f1f5f9; }
+.plan li:first-child { border-top: none; }
+.plan li .ck { color: #16a34a; font-weight: 700; }
+.plan li .x { color: #cbd5e1; font-weight: 700; }
+.plan li.off { color: #94a3b8; }
+.pay-note { text-align: center; font-size: 13px; color: #94a3b8; margin: 0 0 8px; }
+.faq { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 28px; }
+.faq h2 { font-size: 18px; margin: 0 0 14px; }
+.faq h3 { font-size: 14px; font-weight: 600; color: #0f172a; margin: 16px 0 4px; }
+.faq p { font-size: 13.5px; color: #64748b; line-height: 1.6; margin: 0; }
+@media (max-width: 760px) { .pricing-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="site-logo">OuYang <span>Software</span></div>
+  <nav class="site-nav"><a href="/">Products</a></nav>
+</header>
+
+<div class="ol-page">
+  <a href="/omnilog" class="back-link">&larr; Back to OmniLog</a>
+
+  <div class="ol-badge">Pricing</div>
+  <h1>Simple plans for <span>every journal.</span></h1>
+  <p class="subtitle">Self-host OmniLog for free, forever. Or let us host it for you with higher limits and managed backups. Limits below apply to the official hosted service &mdash; self-hosted instances are always unlimited.</p>
+
+  <p class="pay-note">&#128274; Online payments aren&rsquo;t open yet &mdash; upgrade buttons are disabled while we finish setting up billing.</p>
+
+  <div class="pricing-grid">
+
+    <!-- Free -->
+    <div class="plan">
+      <div class="plan-name">Free</div>
+      <div class="plan-price">$0</div>
+      <div class="plan-tagline">For trying OmniLog and light personal use.</div>
+      <ul>
+        <li><span class="ck">&#10003;</span> Up to 50 notes</li>
+        <li><span class="ck">&#10003;</span> Up to 10 folders</li>
+        <li><span class="ck">&#10003;</span> Rich text, Markdown &amp; LaTeX editors</li>
+        <li><span class="ck">&#10003;</span> Multi-device sync</li>
+        <li class="off"><span class="x">&#10007;</span> Image uploads</li>
+        <li class="off"><span class="x">&#10007;</span> Export (JSON / Markdown)</li>
+        <li class="off"><span class="x">&#10007;</span> Version history rollback</li>
+      </ul>
+      <a href="/omnilog/docs" class="ol-btn" style="width:100%;box-sizing:border-box;text-align:center;">Get started free</a>
+    </div>
+
+    <!-- Pro -->
+    <div class="plan featured">
+      <div class="plan-popular">Most popular</div>
+      <div class="plan-name">Pro</div>
+      <div class="plan-price">$5 <small>/ month</small></div>
+      <div class="plan-tagline">For daily writers who want no limits.</div>
+      <ul>
+        <li><span class="ck">&#10003;</span> <strong>Unlimited</strong> notes &amp; folders</li>
+        <li><span class="ck">&#10003;</span> Image uploads &amp; extended storage</li>
+        <li><span class="ck">&#10003;</span> Export (JSON / Markdown)</li>
+        <li><span class="ck">&#10003;</span> Full version history &amp; rollback</li>
+        <li><span class="ck">&#10003;</span> Managed cloud backups</li>
+        <li><span class="ck">&#10003;</span> Everything in Free</li>
+      </ul>
+      <button class="ol-btn-disabled" disabled title="Payments are not open yet">Coming soon</button>
+    </div>
+
+    <!-- Team -->
+    <div class="plan">
+      <div class="plan-name">Team</div>
+      <div class="plan-price">$12 <small>/ user / mo</small></div>
+      <div class="plan-tagline">For teams sharing project journals.</div>
+      <ul>
+        <li><span class="ck">&#10003;</span> Everything in Pro</li>
+        <li><span class="ck">&#10003;</span> Shared project folders</li>
+        <li><span class="ck">&#10003;</span> Role-based access (owner / editor / viewer)</li>
+        <li><span class="ck">&#10003;</span> Audit log</li>
+        <li><span class="ck">&#10003;</span> Priority support</li>
+      </ul>
+      <button class="ol-btn-disabled" disabled title="Payments are not open yet">Coming soon</button>
+    </div>
+
+  </div>
+
+  <div class="faq">
+    <h2>Questions</h2>
+    <h3>Is self-hosting really unlimited?</h3>
+    <p>Yes. When you run your own OmniLog server the plan limits don&rsquo;t apply &mdash; create as many notes, folders, and images as your hardware allows. Plans only gate the official hosted service.</p>
+    <h3>Can I pay now?</h3>
+    <p>Not yet. Billing is being finalised, so the upgrade buttons are locked. You can use the Free tier (or self-host) in the meantime and upgrade once payments open.</p>
+    <h3>What happens to my data if I downgrade?</h3>
+    <p>Nothing is deleted. If you exceed the Free limits you simply can&rsquo;t add new notes/folders until you&rsquo;re back under them or upgrade again &mdash; existing entries stay intact.</p>
+  </div>
+</div>
+
+<footer style="text-align:center; padding:32px; color:#94a3b8; font-size:12px;">
+  &copy; OuYang Software
+</footer>
+</body>
+</html>

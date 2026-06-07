@@ -16,6 +16,9 @@ export function SettingsPage() {
   const markAllMessagesRead = useApp((s) => s.markAllMessagesRead);
   const switchConnection = useApp((s) => s.switchConnection);
   const removeConnection = useApp((s) => s.removeConnection);
+  const navigate = useApp((s) => s.navigate);
+
+  const active = connections.find((c) => c.id === activeConnectionId) ?? null;
 
   const [pwSection, setPwSection] = useState(false);
   const [oldPw, setOldPw] = useState("");
@@ -23,6 +26,13 @@ export function SettingsPage() {
   const [pwMsg, setPwMsg] = useState("");
 
   const unread = messages.filter((m) => !m.readAt);
+
+  const kindLabel: Record<string, string> = {
+    official: "Official server",
+    "self-hosted": "Self-hosted server",
+    "local-embedded": "Local server",
+    offline: "Offline (this device)",
+  };
 
   async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault();
@@ -100,29 +110,41 @@ export function SettingsPage() {
           </div>
         </section>
 
-        {connections.length > 1 && (
-          <section className="settings-section">
-            <h2>Connections</h2>
-            {connections.map((c) => (
-              <div
-                key={c.id}
-                className={`setting-row connection-row ${c.id === activeConnectionId ? "active" : ""}`}
-              >
-                <button className="btn-text" onClick={() => switchConnection(c.id)}>
-                  {c.name}
+        <section className="settings-section">
+          <h2>Mode &amp; connections</h2>
+          <div className="setting-row">
+            <span>Current mode</span>
+            <span className="setting-value">
+              {active ? kindLabel[active.kind] ?? active.kind : "—"}
+            </span>
+          </div>
+          {connections.map((c) => (
+            <div
+              key={c.id}
+              className={`setting-row connection-row ${c.id === activeConnectionId ? "active" : ""}`}
+            >
+              <button className="btn-text" onClick={() => switchConnection(c.id)}>
+                {c.id === activeConnectionId ? "● " : ""}
+                {c.name}
+              </button>
+              {c.id !== activeConnectionId && (
+                <button
+                  className="btn-text danger"
+                  onClick={() => removeConnection(c.id)}
+                >
+                  Remove
                 </button>
-                {c.id !== activeConnectionId && (
-                  <button
-                    className="btn-text danger"
-                    onClick={() => removeConnection(c.id)}
-                  >
-                    Remove
-                  </button>
-                )}
-              </div>
-            ))}
-          </section>
-        )}
+              )}
+            </div>
+          ))}
+          <button
+            className="btn btn-outline full-width"
+            onClick={() => navigate("connect")}
+            style={{ marginTop: 12 }}
+          >
+            Add or switch connection
+          </button>
+        </section>
 
         <section className="settings-section">
           <h2>Security</h2>

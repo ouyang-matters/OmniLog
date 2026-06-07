@@ -3,6 +3,13 @@ import type { License } from "@omnilog/shared";
 import { getClient, useApp } from "../../store/appStore";
 
 /**
+ * Master switch for online payments. Kept off until billing is fully live —
+ * plan cards still render (so users can see what's coming) but Subscribe is
+ * disabled. Flip to `true` to enable Stripe checkout.
+ */
+const PAYMENTS_OPEN = false;
+
+/**
  * "Billing" tab — only mounted when the active connection is an official
  * hosted server. Shows the caller's plan and gives two actions:
  *
@@ -92,6 +99,13 @@ export function BillingTab() {
         opens it in your browser.
       </p>
 
+      {!PAYMENTS_OPEN && (
+        <div className="alert inline">
+          🔒 Online payments aren't open yet. Use the Free tier now — you'll be
+          able to upgrade here once billing launches.
+        </div>
+      )}
+
       <section className="settings-section">
         <h4>Current plan</h4>
         <div className="plan-summary">
@@ -141,9 +155,9 @@ export function BillingTab() {
               "Larger image quota",
             ]}
             current={plan === "pro"}
-            primaryLabel={onPaidPlan ? "Change to Pro" : "Subscribe"}
+            primaryLabel={!PAYMENTS_OPEN ? "Coming soon" : onPaidPlan ? "Change to Pro" : "Subscribe"}
             onSelect={() => void onSubscribe("pro")}
-            disabled={isBootstrap || busy !== null}
+            disabled={!PAYMENTS_OPEN || isBootstrap || busy !== null}
             busy={busy === "checkout"}
           />
           <PlanCard
@@ -156,9 +170,9 @@ export function BillingTab() {
               "Audit log",
             ]}
             current={plan === "team"}
-            primaryLabel={onPaidPlan ? "Change to Team" : "Subscribe"}
+            primaryLabel={!PAYMENTS_OPEN ? "Coming soon" : onPaidPlan ? "Change to Team" : "Subscribe"}
             onSelect={() => void onSubscribe("team")}
-            disabled={isBootstrap || busy !== null}
+            disabled={!PAYMENTS_OPEN || isBootstrap || busy !== null}
             busy={busy === "checkout"}
           />
         </div>

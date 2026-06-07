@@ -10,6 +10,15 @@
     "beforeBuildCommand": "pnpm build"
   },
   "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "OmniLog",
+        "width": 420,
+        "height": 900,
+        "resizable": true
+      }
+    ],
     "security": {
       "csp": null
     }

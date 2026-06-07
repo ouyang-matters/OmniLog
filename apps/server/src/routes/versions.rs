@@ -77,6 +77,11 @@ pub async fn restore(
     if !access::can_write_entry(&state, &auth, &entry).await? {
         return Err(AppError::Unauthorized);
     }
+    if !crate::limits::effective_limits(&state, &auth).await?.version_restore {
+        return Err(AppError::PaymentRequired(
+            "Restoring past versions is a Pro feature. Upgrade to roll back.".into(),
+        ));
+    }
     let target = state
         .storage
         .get_version(&id, input.version)

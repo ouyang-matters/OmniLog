@@ -9,10 +9,14 @@ const DEVICE_ID_KEY = "deviceId";
 const PORT_KEY = "localServerPort";
 
 /**
- * The official hosted service is not available yet. We deliberately keep this
- * empty so the client never tries to connect to a placeholder URL.
+ * Base URL of the official hosted OmniLog service. The desktop transport runs
+ * in Rust (reqwest), so this can be the HTTPS proxy in front of the server.
+ * `/health` and `/api/...` are appended by the ApiClient.
  */
-export const DEFAULT_SERVER_URL = "";
+export const OFFICIAL_SERVER_URL = "https://dev.aqouyang.com/api/omnilog";
+
+/** @deprecated kept for back-compat; official URL now lives in OFFICIAL_SERVER_URL. */
+export const DEFAULT_SERVER_URL = OFFICIAL_SERVER_URL;
 
 function uuid(): string {
   // crypto.randomUUID is available in the Tauri WebView.
@@ -123,11 +127,10 @@ export function newConnection(
  * managed-local kind, where we'll spawn the server before connecting).
  */
 export function isConnectionUsable(c: ServerConnection | null | undefined): c is ServerConnection {
-  return (
-    !!c &&
-    c.serverUrl.trim().length > 0 &&
-    c.apiToken.trim().length > 0
-  );
+  if (!c) return false;
+  // Offline connections have no URL/token but are always "connectable".
+  if (c.kind === "offline") return true;
+  return c.serverUrl.trim().length > 0 && c.apiToken.trim().length > 0;
 }
 
 /**

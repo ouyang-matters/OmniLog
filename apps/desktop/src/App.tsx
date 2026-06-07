@@ -5,6 +5,7 @@ import { SignedOutLanding } from "./components/SignedOutLanding";
 import { MainLayout } from "./components/MainLayout";
 import { SettingsPage } from "./components/SettingsPage";
 import { DialogHost } from "./ui/dialog";
+import { UpgradeWatcher } from "./ui/UpgradeWatcher";
 
 export function App() {
   const phase = useApp((s) => s.phase);
@@ -36,6 +37,7 @@ export function App() {
     <>
       {content}
       <DialogHost />
+      <UpgradeWatcher />
     </>
   );
 }

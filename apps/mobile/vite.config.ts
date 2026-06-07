@@ -4,8 +4,20 @@ import { fileURLToPath } from "node:url";
 
 const host = process.env.TAURI_DEV_HOST;
 
+/**
+ * Vite tags module scripts with `crossorigin`, which makes the Android WebView
+ * fetch them in CORS mode. Tauri's custom asset protocol doesn't satisfy that
+ * check, so the bundle is blocked and the app shows a blank screen. Strip it.
+ */
+const stripCrossorigin = {
+  name: "strip-crossorigin",
+  transformIndexHtml(html: string) {
+    return html.replace(/\s+crossorigin(="[^"]*")?/g, "");
+  },
+};
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), stripCrossorigin],
   resolve: {
     alias: {
       "@omnilog/shared": fileURLToPath(

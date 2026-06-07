@@ -1,6 +1,7 @@
 import type { Editor } from "@tiptap/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
+import { ApiError } from "@omnilog/shared";
 import { getClient } from "../../store/appStore";
 import { useApp } from "../../store/appStore";
 import { ASSET_SRC_PREFIX, cacheAssetUrl } from "./ImageNode";
@@ -32,6 +33,10 @@ export async function uploadAndInsert(editor: Editor, file: Blob, fileName: stri
       })
       .run();
   } catch (e) {
+    if (e instanceof ApiError && e.status === 402) {
+      useApp.getState().setUpgrade(e.message);
+      return;
+    }
     await alertDialog({
       title: "Image upload failed",
       message: e instanceof Error ? e.message : "server unreachable",

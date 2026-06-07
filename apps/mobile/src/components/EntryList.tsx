@@ -1,5 +1,7 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useApp } from "../store/appStore";
+import { ActionSheet, ConfirmSheet, FolderPickerSheet, PromptSheet } from "./ui";
+import { Icon } from "./icons";
 
 function formatDate(iso: string): string {
   if (!iso) return "";
@@ -12,6 +14,12 @@ function truncate(text: string, max: number): string {
   return text.slice(0, max).trimEnd() + "...";
 }
 
+type ItemRef = { kind: "entry" | "folder"; id: string; name: string };
+type PromptState =
+  | { mode: "new-folder" }
+  | { mode: "rename-folder"; id: string; initial: string }
+  | { mode: "rename-entry"; id: string; initial: string };
+
 export function EntryList() {
   const entries = useApp((s) => s.entries);
   const online = useApp((s) => s.online);
@@ -21,10 +29,23 @@ export function EntryList() {
   const currentFolderId = useApp((s) => s.currentFolderId);
   const selectEntry = useApp((s) => s.selectEntry);
   const createEntry = useApp((s) => s.createEntry);
+  const createFolder = useApp((s) => s.createFolder);
+  const renameFolder = useApp((s) => s.renameFolder);
+  const moveFolder = useApp((s) => s.moveFolder);
+  const deleteFolder = useApp((s) => s.deleteFolder);
+  const renameEntry = useApp((s) => s.renameEntry);
+  const moveEntry = useApp((s) => s.moveEntry);
+  const deleteEntry = useApp((s) => s.deleteEntry);
   const setSearch = useApp((s) => s.setSearch);
   const navigate = useApp((s) => s.navigate);
   const enterFolder = useApp((s) => s.enterFolder);
   const refresh = useApp((s) => s.refresh);
+
+  const [fabOpen, setFabOpen] = useState(false);
+  const [menu, setMenu] = useState<ItemRef | null>(null);
+  const [prompt, setPrompt] = useState<PromptState | null>(null);
+  const [confirm, setConfirm] = useState<ItemRef | null>(null);
+  const [move, setMove] = useState<ItemRef | null>(null);
 
   const unreadCount = messages.filter((m) => !m.readAt).length;
   const childFolders = folders.filter((f) => (f.parentId ?? null) === currentFolderId);
@@ -33,6 +54,36 @@ export function EntryList() {
   const pullToRefresh = useCallback(async () => {
     await refresh();
   }, [refresh]);
+
+  function openMenu(ref: ItemRef, e: React.MouseEvent) {
+    e.stopPropagation();
+    setMenu(ref);
+  }
+
+  async function onPromptSubmit(value: string) {
+    const p = prompt;
+    setPrompt(null);
+    if (!p) return;
+    if (p.mode === "new-folder") await createFolder(value, currentFolderId);
+    else if (p.mode === "rename-folder") await renameFolder(p.id, value);
+    else if (p.mode === "rename-entry") await renameEntry(p.id, value);
+  }
+
+  async function onConfirmDelete() {
+    const c = confirm;
+    setConfirm(null);
+    if (!c) return;
+    if (c.kind === "folder") await deleteFolder(c.id);
+    else await deleteEntry(c.id);
+  }
+
+  async function onMovePick(target: string | null) {
+    const m = move;
+    setMove(null);
+    if (!m) return;
+    if (m.kind === "folder") await moveFolder(m.id, target);
+    else await moveEntry(m.id, target);
+  }
 
   return (
     <div className="page entry-list-page">
@@ -44,9 +95,7 @@ export function EntryList() {
         ) : (
           <div className="header-spacer" />
         )}
-        <h1 className="header-title">
-          {currentFolder?.name ?? "OmniLog"}
-        </h1>
+        <h1 className="header-title">{currentFolder?.name ?? "OmniLog"}</h1>
         <div className="header-actions">
           <button
             className="btn-icon"
@@ -79,56 +128,139 @@ export function EntryList() {
 
       <div className="list-content">
         {childFolders.length > 0 && !search && (
-          <div className="folder-chips">
+          <div className="folder-list">
             {childFolders.map((f) => (
-              <button
-                key={f._id}
-                className="folder-chip"
-                onClick={() => enterFolder(f._id)}
-              >
-                <span className="folder-icon">📁</span> {f.name}
-              </button>
+              <div key={f._id} className="folder-row" onClick={() => enterFolder(f._id)}>
+                <span className="folder-icon"><Icon name="folder" size={20} /></span>
+                <span className="folder-name">{f.name}</span>
+                <button
+                  className="row-menu-btn"
+                  aria-label="Folder menu"
+                  onClick={(e) => openMenu({ kind: "folder", id: f._id, name: f.name }, e)}
+                >
+                  ⋯
+                </button>
+              </div>
             ))}
           </div>
         )}
 
-        {entries.length === 0 ? (
+        {entries.length === 0 && childFolders.length === 0 ? (
           <div className="empty-state">
             <p>{search ? "No results" : "No entries yet"}</p>
           </div>
         ) : (
           <ul className="entry-items">
             {entries.map((entry) => (
-              <li
-                key={entry.id}
-                className="entry-item"
-                onClick={() => selectEntry(entry.id)}
-              >
+              <li key={entry.id} className="entry-item" onClick={() => selectEntry(entry.id)}>
                 <div className="entry-item-header">
-                  <span className="entry-title">
-                    {entry.title || "Untitled"}
-                  </span>
+                  <span className="entry-title">{entry.title || "Untitled"}</span>
+                  <button
+                    className="row-menu-btn"
+                    aria-label="Entry menu"
+                    onClick={(e) =>
+                      openMenu({ kind: "entry", id: entry.id, name: entry.title || "Untitled" }, e)
+                    }
+                  >
+                    ⋯
+                  </button>
+                </div>
+                <div className="entry-preview">{truncate(entry.contentText, 100)}</div>
+                <div className="entry-item-footer">
+                  {entry.tags.length > 0 && (
+                    <div className="entry-tags">
+                      {entry.tags.map((t) => (
+                        <span key={t} className="tag">{t}</span>
+                      ))}
+                    </div>
+                  )}
                   <span className="entry-date">{formatDate(entry.updatedAt)}</span>
                 </div>
-                <div className="entry-preview">
-                  {truncate(entry.contentText, 100)}
-                </div>
-                {entry.tags.length > 0 && (
-                  <div className="entry-tags">
-                    {entry.tags.map((t) => (
-                      <span key={t} className="tag">{t}</span>
-                    ))}
-                  </div>
-                )}
               </li>
             ))}
           </ul>
         )}
       </div>
 
-      <button className="fab" onClick={createEntry} aria-label="New entry">
+      <button className="fab" onClick={() => setFabOpen(true)} aria-label="Create">
         +
       </button>
+
+      {/* + menu: note or folder */}
+      <ActionSheet
+        open={fabOpen}
+        onClose={() => setFabOpen(false)}
+        title="Create"
+        actions={[
+          { label: "New note", icon: <Icon name="note" />, onPick: () => void createEntry() },
+          { label: "New folder", icon: <Icon name="folder" />, onPick: () => setPrompt({ mode: "new-folder" }) },
+        ]}
+      />
+
+      {/* Per-item menu: rename / move / delete */}
+      <ActionSheet
+        open={menu !== null}
+        onClose={() => setMenu(null)}
+        title={menu?.name}
+        actions={
+          menu
+            ? [
+                {
+                  label: "Rename",
+                  icon: <Icon name="rename" />,
+                  onPick: () =>
+                    setPrompt(
+                      menu.kind === "folder"
+                        ? { mode: "rename-folder", id: menu.id, initial: menu.name }
+                        : { mode: "rename-entry", id: menu.id, initial: menu.name },
+                    ),
+                },
+                { label: "Move", icon: <Icon name="move" />, onPick: () => setMove(menu) },
+                { label: "Delete", icon: <Icon name="trash" />, danger: true, onPick: () => setConfirm(menu) },
+              ]
+            : []
+        }
+      />
+
+      <PromptSheet
+        open={prompt !== null}
+        title={
+          prompt?.mode === "new-folder"
+            ? "New folder"
+            : prompt?.mode === "rename-folder"
+              ? "Rename folder"
+              : "Rename note"
+        }
+        label="Name"
+        placeholder={prompt?.mode === "new-folder" ? "Folder name" : undefined}
+        initial={prompt && prompt.mode !== "new-folder" ? prompt.initial : ""}
+        confirmText={prompt?.mode === "new-folder" ? "Create" : "Save"}
+        onCancel={() => setPrompt(null)}
+        onSubmit={onPromptSubmit}
+      />
+
+      <FolderPickerSheet
+        open={move !== null}
+        title="Move to"
+        folders={folders}
+        excludeId={move?.kind === "folder" ? move.id : undefined}
+        onCancel={() => setMove(null)}
+        onPick={onMovePick}
+      />
+
+      <ConfirmSheet
+        open={confirm !== null}
+        title={confirm?.kind === "folder" ? "Delete folder?" : "Delete note?"}
+        message={
+          confirm?.kind === "folder"
+            ? `"${confirm?.name}" will be deleted. Notes inside move to the parent.`
+            : `"${confirm?.name}" will be permanently deleted.`
+        }
+        confirmText="Delete"
+        danger
+        onCancel={() => setConfirm(null)}
+        onConfirm={onConfirmDelete}
+      />
     </div>
   );
 }

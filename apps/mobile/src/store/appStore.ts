@@ -11,13 +11,14 @@ import type {
   WorklogEntry,
 } from "@omnilog/shared";
 import { ApiClient as ApiClientClass } from "@omnilog/shared";
-import { createApiClient, rustFetch } from "../lib/api";
+import { createApiClient, createLocalClient, rustFetch } from "../lib/api";
 import {
   connectionToConfig,
   getDeviceId,
   isConnectionUsable,
   loadConnections,
   newConnection,
+  OFFICIAL_SERVER_URL,
   saveConnections,
 } from "../lib/config";
 import {
@@ -36,7 +37,7 @@ import { applyTheme, loadTheme, saveTheme, type Theme } from "../lib/theme";
 
 type Phase = "loading" | "setup" | "ready";
 type SaveState = "idle" | "saving" | "saved" | "offline" | "error";
-type MobileView = "list" | "editor" | "settings";
+type MobileView = "list" | "editor" | "settings" | "connect";
 
 interface AppState {
   phase: Phase;
@@ -61,7 +62,21 @@ interface AppState {
   view: MobileView;
 
   init: () => Promise<void>;
-  loginAndConnect: (input: { serverUrl: string; username: string; password: string; deviceName: string }) => Promise<void>;
+  loginAndConnect: (input: {
+    serverUrl: string;
+    username: string;
+    password: string;
+    deviceName: string;
+    kind?: ServerKind;
+    name?: string;
+  }) => Promise<void>;
+  registerAndConnect: (input: {
+    username: string;
+    email: string;
+    password: string;
+    deviceName: string;
+  }) => Promise<{ message: string }>;
+  startOffline: () => Promise<void>;
   addConnection: (input: {
     name: string;
     kind: ServerKind;
@@ -81,9 +96,11 @@ interface AppState {
   loadFolders: () => Promise<void>;
   createFolder: (name: string, parentId: string | null) => Promise<void>;
   renameFolder: (id: string, name: string) => Promise<void>;
+  moveFolder: (id: string, parentId: string | null) => Promise<void>;
   deleteFolder: (id: string) => Promise<void>;
   enterFolder: (id: string | null) => Promise<void>;
   moveEntry: (entryId: string, folderId: string | null) => Promise<void>;
+  renameEntry: (id: string, title: string) => Promise<void>;
 
   refresh: () => Promise<void>;
   setSearch: (q: string) => Promise<void>;
@@ -111,6 +128,17 @@ let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
 export function getClient(): ApiClient | null {
   return client;
+}
+
+/** Build the right client for a connection: a local store for offline, else HTTP. */
+function clientForConnection(c: ServerConnection): ApiClient | null {
+  if (c.kind === "offline") return createLocalClient(deviceId);
+  if (!isConnectionUsable(c)) return null;
+  return createApiClient(connectionToConfig(c, deviceId));
+}
+
+function configForConnection(c: ServerConnection): ServerConfig | null {
+  return c.kind === "offline" ? null : connectionToConfig(c, deviceId);
 }
 
 function today(): string {
@@ -158,9 +186,8 @@ export const useApp = create<AppState>((set, get) => ({
       set({ phase: "setup", config: null });
       return;
     }
-    const cfg = connectionToConfig(active, deviceId);
-    client = createApiClient(cfg);
-    set({ phase: "ready", config: cfg });
+    client = clientForConnection(active);
+    set({ phase: "ready", config: configForConnection(active) });
     await get().refresh();
     await get().loadFolders();
     await get().loadMe();
@@ -168,19 +195,58 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   async loginAndConnect(input) {
+    const kind: ServerKind = input.kind ?? "self-hosted";
     const probe = new ApiClientClass({
       baseUrl: input.serverUrl,
       token: "",
       fetch: rustFetch,
-      timeoutMs: 8000,
+      timeoutMs: 15000,
     });
     const res = await probe.login(input.username, input.password);
     await get().addConnection({
-      name: connectionLabelFromUrl(input.serverUrl),
-      kind: "self-hosted",
+      name:
+        input.name?.trim() ||
+        (kind === "official" ? "Official OmniLog" : connectionLabelFromUrl(input.serverUrl)),
+      kind,
       serverUrl: input.serverUrl,
       apiToken: res.token,
       deviceName: input.deviceName || res.user.username,
+      activate: true,
+    });
+  },
+
+  async registerAndConnect(input) {
+    const probe = new ApiClientClass({
+      baseUrl: OFFICIAL_SERVER_URL,
+      token: "",
+      fetch: rustFetch,
+      timeoutMs: 15000,
+    });
+    const res = await probe.register(input.username, input.email, input.password);
+    // Some servers require email verification before login succeeds; try to log
+    // in immediately and, if that fails, surface the server's message.
+    try {
+      await get().loginAndConnect({
+        serverUrl: OFFICIAL_SERVER_URL,
+        username: input.username,
+        password: input.password,
+        deviceName: input.deviceName,
+        kind: "official",
+        name: "Official OmniLog",
+      });
+    } catch {
+      // Login not yet possible (e.g. verification pending) — leave setup as-is.
+    }
+    return { message: res.message };
+  },
+
+  async startOffline() {
+    await get().addConnection({
+      name: "Offline (this device)",
+      kind: "offline",
+      serverUrl: "",
+      apiToken: "",
+      deviceName: "This device",
       activate: true,
     });
   },
@@ -211,8 +277,8 @@ export const useApp = create<AppState>((set, get) => ({
   async switchConnection(id) {
     const target = get().connections.find((c) => c.id === id);
     if (!target) return;
-    const cfg = connectionToConfig(target, deviceId);
-    client = createApiClient(cfg);
+    const cfg = configForConnection(target);
+    client = clientForConnection(target);
 
     const stamped = { ...target, lastConnectedAt: new Date().toISOString() };
     const connections = get().connections.map((c) => (c.id === id ? stamped : c));
@@ -327,6 +393,14 @@ export const useApp = create<AppState>((set, get) => ({
     set({ folders: get().folders.map((f) => (f._id === id ? { ...f, ...updated } : f)) });
   },
 
+  async moveFolder(id, parentId) {
+    if (!client) return;
+    // Guard against moving a folder into itself.
+    if (id === parentId) return;
+    const updated = await client.updateFolder(id, { parentId });
+    set({ folders: get().folders.map((f) => (f._id === id ? { ...f, ...updated } : f)) });
+  },
+
   async deleteFolder(id) {
     if (!client) return;
     await client.deleteFolder(id);
@@ -364,6 +438,18 @@ export const useApp = create<AppState>((set, get) => ({
         : get().entries.filter((e) => e.id !== entryId),
       current: get().currentId === entryId ? draft : get().current,
     });
+  },
+
+  async renameEntry(id, title) {
+    const draft = await getDraft(id);
+    if (!draft) return;
+    const next: Draft = { ...draft, title, updatedAt: new Date().toISOString(), dirty: true };
+    await saveDraft(next);
+    set({
+      entries: get().entries.map((e) => (e.id === id ? next : e)),
+      current: get().currentId === id ? next : get().current,
+    });
+    await syncDraft(set, get, id);
   },
 
   async refresh() {
@@ -518,7 +604,9 @@ export const useApp = create<AppState>((set, get) => ({
 
   goBack() {
     const v = get().view;
-    if (v === "editor" || v === "settings") {
+    if (v === "connect") {
+      set({ view: "settings" });
+    } else if (v === "editor" || v === "settings") {
       set({ view: "list" });
     }
   },

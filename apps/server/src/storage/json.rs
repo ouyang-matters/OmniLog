@@ -421,6 +421,14 @@ impl Storage for JsonStorage {
             .count() as u64)
     }
 
+    async fn count_entries(&self, user_id: &str) -> AppResult<u64> {
+        let map = self.entries.read().await;
+        Ok(map
+            .values()
+            .filter(|e| e.deleted_at.is_none() && e.user_id == user_id)
+            .count() as u64)
+    }
+
     async fn count_users(&self) -> AppResult<u64> {
         Ok(self.users.read().await.len() as u64)
     }

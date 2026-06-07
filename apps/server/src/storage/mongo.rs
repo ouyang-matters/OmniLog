@@ -306,6 +306,13 @@ impl Storage for MongoStorage {
             .await?)
     }
 
+    async fn count_entries(&self, user_id: &str) -> AppResult<u64> {
+        Ok(self
+            .entries()
+            .count_documents(doc! { "userId": user_id, "deletedAt": null })
+            .await?)
+    }
+
     async fn count_users(&self) -> AppResult<u64> {
         Ok(self.users().count_documents(doc! {}).await?)
     }

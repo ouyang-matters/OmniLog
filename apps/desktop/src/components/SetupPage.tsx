@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { testConnection } from "../lib/api";
 import { defaultDeviceName, killPort, PortInUseError } from "../lib/localServer";
 import { useApp } from "../store/appStore";
+import { AddConnectionDialog } from "./settings/AddConnectionDialog";
 
 type Mode = "custom" | "official";
 type TestState =
@@ -22,6 +23,7 @@ export function SetupPage() {
   const completeSetup = useApp((s) => s.completeSetup);
   const quickStart = useApp((s) => s.quickStartLocalServer);
   const loginAndConnect = useApp((s) => s.loginAndConnect);
+  const startOffline = useApp((s) => s.startOffline);
   const existing = useApp((s) => s.config);
 
   const [mode, setMode] = useState<Mode>("custom");
@@ -36,6 +38,7 @@ export function SetupPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [quick, setQuick] = useState<QuickState>({ kind: "idle" });
   const [customPort, setCustomPort] = useState("");
+  const [showOfficial, setShowOfficial] = useState(false);
 
   // Prefill a sensible default device name on first load.
   useEffect(() => {
@@ -216,16 +219,44 @@ export function SetupPage() {
             </div>
           </label>
 
-          <label className="mode-option disabled" title="Coming soon">
-            <input type="radio" name="mode" disabled />
+          <button
+            type="button"
+            className="mode-option official-cta"
+            onClick={() => setShowOfficial(true)}
+          >
             <div>
-              <strong>
-                Official hosted server <span className="badge">Coming soon</span>
-              </strong>
-              <span className="muted">Official hosted service is not available yet.</span>
+              <strong>Official OmniLog</strong>
+              <span className="muted">
+                Sign up or log in to the hosted service. Free tier with usage
+                limits; upgrade for more.
+              </span>
             </div>
-          </label>
+            <span className="official-arrow">&rsaquo;</span>
+          </button>
+
+          <button
+            type="button"
+            className="mode-option official-cta"
+            onClick={() => void startOffline()}
+          >
+            <div>
+              <strong>Offline (local-only)</strong>
+              <span className="muted">
+                No account, no server, no limits. Entries and images stay on
+                this device and are never uploaded.
+              </span>
+            </div>
+            <span className="official-arrow">&rsaquo;</span>
+          </button>
         </div>
+
+        {showOfficial && (
+          <AddConnectionDialog
+            initialKind="official"
+            onClose={() => setShowOfficial(false)}
+            onAdded={() => setShowOfficial(false)}
+          />
+        )}
 
         <fieldset disabled={mode !== "custom"} className="fields">
           <label className="field">

@@ -31,6 +31,8 @@ export function App() {
       return <EntryView />;
     case "settings":
       return <SettingsPage />;
+    case "connect":
+      return <LoginPage showBack />;
     default:
       return <EntryList />;
   }

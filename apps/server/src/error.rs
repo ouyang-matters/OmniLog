@@ -19,6 +19,10 @@ pub enum AppError {
     #[error("version conflict")]
     Conflict,
 
+    /// 402 — a plan/usage limit was hit; the client shows an upgrade prompt.
+    #[error("{0}")]
+    PaymentRequired(String),
+
     // Reserved for explicit 413 responses; body-limit rejections already map
     // to 413 via the DefaultBodyLimit layer.
     #[allow(dead_code)]
@@ -45,6 +49,7 @@ impl IntoResponse for AppError {
             AppError::Unauthorized => (StatusCode::UNAUTHORIZED, self.to_string()),
             AppError::NotFound => (StatusCode::NOT_FOUND, self.to_string()),
             AppError::Conflict => (StatusCode::CONFLICT, self.to_string()),
+            AppError::PaymentRequired(m) => (StatusCode::PAYMENT_REQUIRED, m.clone()),
             AppError::PayloadTooLarge => (StatusCode::PAYLOAD_TOO_LARGE, self.to_string()),
             AppError::Mongo(e) => {
                 tracing::error!(error = %e, "mongodb error");

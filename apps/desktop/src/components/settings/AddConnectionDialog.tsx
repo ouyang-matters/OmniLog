@@ -3,28 +3,34 @@ import { ApiClient as ApiClientClass } from "@omnilog/shared";
 import { useApp } from "../../store/appStore";
 import { rustFetch, testConnection } from "../../lib/api";
 import { defaultDeviceName } from "../../lib/localServer";
+import { OFFICIAL_SERVER_URL } from "../../lib/config";
 
 interface Props {
   onClose: () => void;
   onAdded: () => void;
+  /** Open the dialog pre-selected to a kind (e.g. "official" from setup). */
+  initialKind?: Kind;
 }
 
 type Kind = "self-hosted" | "official";
 type AuthMode = "token" | "login";
+type AuthAction = "login" | "register";
 
 /**
- * Modal for adding a new saved connection while already signed in. A trimmed
- * version of `SetupPage` (no "Start local server" — one local server per
- * client is enough, the user provisions that during first run).
+ * Modal for adding a saved connection. Self-hosted servers take a URL + token
+ * or username/password. The official service uses a fixed URL and an in-app
+ * sign-up / log-in flow (email + password).
  */
-export function AddConnectionDialog({ onClose, onAdded }: Props) {
+export function AddConnectionDialog({ onClose, onAdded, initialKind }: Props) {
   const addConnection = useApp((s) => s.addConnection);
-  const [kind, setKind] = useState<Kind>("self-hosted");
+  const [kind, setKind] = useState<Kind>(initialKind ?? "self-hosted");
   const [name, setName] = useState("");
   const [serverUrl, setServerUrl] = useState("");
   const [authMode, setAuthMode] = useState<AuthMode>("token");
+  const [authAction, setAuthAction] = useState<AuthAction>("login");
   const [apiToken, setApiToken] = useState("");
   const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [deviceName, setDeviceName] = useState("");
   const [activate, setActivate] = useState(true);
@@ -35,13 +41,14 @@ export function AddConnectionDialog({ onClose, onAdded }: Props) {
     | { kind: "error"; message: string }
   >({ kind: "idle" });
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const isOfficial = kind === "official";
 
   useEffect(() => {
     void defaultDeviceName().then((n) => setDeviceName((d) => d || n));
   }, []);
-
-  const officialDisabled = kind === "official"; // not live yet
 
   async function onTest() {
     if (!serverUrl.trim() || !apiToken.trim()) {
@@ -59,32 +66,36 @@ export function AddConnectionDialog({ onClose, onAdded }: Props) {
   }
 
   async function onSave() {
-    if (officialDisabled) {
-      setSaveError("The official hosted service is not available yet.");
-      return;
-    }
     setSaveError(null);
+    setInfo(null);
     setSaving(true);
     try {
+      const baseUrl = isOfficial ? OFFICIAL_SERVER_URL : serverUrl.trim();
       let token = apiToken.trim();
-      if (authMode === "login") {
-        const probe = new ApiClientClass({
-          baseUrl: serverUrl.trim(),
-          token: "",
-          fetch: rustFetch,
-          timeoutMs: 8000,
-        });
+      let resolvedName = username.trim();
+
+      if (isOfficial) {
+        const probe = new ApiClientClass({ baseUrl, token: "", fetch: rustFetch, timeoutMs: 15000 });
+        if (authAction === "register") {
+          await probe.register(username.trim(), email.trim(), password);
+          setInfo("Account created. We sent a verification email - verify it to lift the free-tier limits.");
+        }
         const res = await probe.login(username.trim(), password);
         token = res.token;
-        if (!deviceName.trim()) setDeviceName(res.user.username);
+        resolvedName = res.user.username;
+      } else if (authMode === "login") {
+        const probe = new ApiClientClass({ baseUrl, token: "", fetch: rustFetch, timeoutMs: 8000 });
+        const res = await probe.login(username.trim(), password);
+        token = res.token;
+        resolvedName = res.user.username;
       }
+
       await addConnection({
-        name: name.trim() || hostnameFromUrl(serverUrl) || "My server",
-        // official is guarded out above, so this is always a self-hosted add
-        kind: "self-hosted",
-        serverUrl: serverUrl.trim(),
+        name: name.trim() || (isOfficial ? "Official OmniLog" : hostnameFromUrl(baseUrl) || "My server"),
+        kind,
+        serverUrl: baseUrl,
         apiToken: token,
-        deviceName: deviceName.trim() || "My Device",
+        deviceName: deviceName.trim() || resolvedName || "My Device",
         activate,
       });
       onAdded();
@@ -95,12 +106,14 @@ export function AddConnectionDialog({ onClose, onAdded }: Props) {
     }
   }
 
-  const canSave =
-    !officialDisabled &&
-    serverUrl.trim().length > 0 &&
-    (authMode === "token"
-      ? apiToken.trim().length > 0
-      : username.trim().length > 0 && password.length > 0);
+  const canSave = isOfficial
+    ? username.trim().length > 0 &&
+      password.length > 0 &&
+      (authAction === "login" || email.includes("@"))
+    : serverUrl.trim().length > 0 &&
+      (authMode === "token"
+        ? apiToken.trim().length > 0
+        : username.trim().length > 0 && password.length > 0);
 
   return (
     <div className="modal-backdrop" onMouseDown={onClose}>
@@ -128,75 +141,62 @@ export function AddConnectionDialog({ onClose, onAdded }: Props) {
               onChange={() => setKind("official")}
             />
             <div>
-              <strong>
-                Official OmniLog <span className="badge">Coming soon</span>
-              </strong>
+              <strong>Official OmniLog</strong>
               <span className="muted">
-                Hosted by us with managed backups and (later) paid plans.
-                Reserved — the URL and license endpoint will populate when the
-                service launches.
+                Hosted by us with managed backups. Free tier with usage limits;
+                upgrade for more.
               </span>
             </div>
           </label>
         </div>
 
-        <fieldset disabled={officialDisabled} className="fields">
+        <fieldset className="fields">
           <label className="field">
             <span>Display name <em className="muted">(shown in the switcher)</em></span>
             <input
               type="text"
-              placeholder="e.g. Home server"
+              placeholder={isOfficial ? "Official OmniLog" : "e.g. Home server"}
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
           </label>
 
-          <label className="field">
-            <span>Server URL</span>
-            <input
-              type="text"
-              placeholder="https://omnilog.example.com"
-              value={serverUrl}
-              onChange={(e) => setServerUrl(e.target.value)}
-              spellCheck={false}
-              autoCorrect="off"
-              autoCapitalize="off"
-            />
-          </label>
-
-          <div className="field">
-            <span>Authentication</span>
-            <div className="segmented">
-              <button
-                type="button"
-                className={authMode === "token" ? "active" : ""}
-                onClick={() => setAuthMode("token")}
-              >
-                API Token
-              </button>
-              <button
-                type="button"
-                className={authMode === "login" ? "active" : ""}
-                onClick={() => setAuthMode("login")}
-              >
-                Username & Password
-              </button>
-            </div>
-          </div>
-
-          {authMode === "token" ? (
+          {!isOfficial && (
             <label className="field">
-              <span>API Token</span>
+              <span>Server URL</span>
               <input
-                type="password"
-                placeholder="Your server's API_TOKEN"
-                value={apiToken}
-                onChange={(e) => setApiToken(e.target.value)}
+                type="text"
+                placeholder="https://omnilog.example.com"
+                value={serverUrl}
+                onChange={(e) => setServerUrl(e.target.value)}
                 spellCheck={false}
+                autoCorrect="off"
+                autoCapitalize="off"
               />
             </label>
-          ) : (
+          )}
+
+          {isOfficial ? (
             <>
+              <div className="field">
+                <span>Account</span>
+                <div className="segmented">
+                  <button
+                    type="button"
+                    className={authAction === "login" ? "active" : ""}
+                    onClick={() => setAuthAction("login")}
+                  >
+                    Log in
+                  </button>
+                  <button
+                    type="button"
+                    className={authAction === "register" ? "active" : ""}
+                    onClick={() => setAuthAction("register")}
+                  >
+                    Sign up
+                  </button>
+                </div>
+              </div>
               <label className="field">
                 <span>Username</span>
                 <input
@@ -208,6 +208,20 @@ export function AddConnectionDialog({ onClose, onAdded }: Props) {
                   spellCheck={false}
                 />
               </label>
+              {authAction === "register" && (
+                <label className="field">
+                  <span>Email</span>
+                  <input
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                  />
+                </label>
+              )}
               <label className="field">
                 <span>Password</span>
                 <input
@@ -216,6 +230,63 @@ export function AddConnectionDialog({ onClose, onAdded }: Props) {
                   onChange={(e) => setPassword(e.target.value)}
                 />
               </label>
+            </>
+          ) : (
+            <>
+              <div className="field">
+                <span>Authentication</span>
+                <div className="segmented">
+                  <button
+                    type="button"
+                    className={authMode === "token" ? "active" : ""}
+                    onClick={() => setAuthMode("token")}
+                  >
+                    API Token
+                  </button>
+                  <button
+                    type="button"
+                    className={authMode === "login" ? "active" : ""}
+                    onClick={() => setAuthMode("login")}
+                  >
+                    Username & Password
+                  </button>
+                </div>
+              </div>
+
+              {authMode === "token" ? (
+                <label className="field">
+                  <span>API Token</span>
+                  <input
+                    type="password"
+                    placeholder="Your server's API_TOKEN"
+                    value={apiToken}
+                    onChange={(e) => setApiToken(e.target.value)}
+                    spellCheck={false}
+                  />
+                </label>
+              ) : (
+                <>
+                  <label className="field">
+                    <span>Username</span>
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Password</span>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                  </label>
+                </>
+              )}
             </>
           )}
 
@@ -249,23 +320,34 @@ export function AddConnectionDialog({ onClose, onAdded }: Props) {
           </div>
         )}
         {test.kind === "error" && <div className="alert error inline">{test.message}</div>}
+        {info && <div className="alert ok inline">{info}</div>}
         {saveError && <div className="alert error inline">{saveError}</div>}
 
         <div className="actions">
           <button className="btn ghost" onClick={onClose}>Cancel</button>
-          <button
-            className="btn"
-            onClick={() => void onTest()}
-            disabled={authMode !== "token" || officialDisabled || test.kind === "testing"}
-          >
-            {test.kind === "testing" ? "Testing…" : "Test"}
-          </button>
+          {!isOfficial && (
+            <button
+              className="btn"
+              onClick={() => void onTest()}
+              disabled={authMode !== "token" || test.kind === "testing"}
+            >
+              {test.kind === "testing" ? "Testing..." : "Test"}
+            </button>
+          )}
           <button
             className="btn primary"
             onClick={() => void onSave()}
             disabled={!canSave || saving}
           >
-            {saving ? "Saving…" : "Save"}
+            {saving
+              ? isOfficial && authAction === "register"
+                ? "Creating..."
+                : "Connecting..."
+              : isOfficial
+                ? authAction === "register"
+                  ? "Sign up"
+                  : "Log in"
+                : "Save"}
           </button>
         </div>
       </div>

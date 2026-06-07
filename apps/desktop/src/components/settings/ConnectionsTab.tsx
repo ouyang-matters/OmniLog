@@ -153,6 +153,7 @@ function KindBadge({
     "local-embedded": { text: "Local", cls: "kind-local" },
     "self-hosted": { text: "Self-hosted", cls: "kind-self" },
     "official": { text: "Official", cls: "kind-official" },
+    "offline": { text: "Offline", cls: "kind-local" },
   };
   const { text, cls } = labels[kind];
   return <span className={`kind-badge ${cls} ${large ? "large" : ""}`}>{text}</span>;
