@@ -4,6 +4,55 @@ A running journal of changes to OmniLog. Newest entries on top.
 
 ---
 
+## 2026-06-04: handoff to a different device; defer first compile
+
+### Notes
+- Owen is signing off on the Windows workstation and continuing on
+  another device when he gets home. No code changes this turn beyond
+  the prior em-dash pass; this entry is a checkpoint so whoever picks
+  up next knows the state without re-reading every prior session.
+- Repo state: `developing` is in sync with `origin/developing` at
+  `53cca0b`. Last code work was the modularisation merge on the Linux
+  side (`cb19b28`); the Windows side only contributed a README
+  typography fix on top.
+- Build status: still no compile pass has been run on the code added in
+  sessions 1 through 6 (multi-user, sharing, notifications, multi-mode
+  editor, multi-connection client, Stripe billing) or on the
+  modularisation refactor. First build will almost certainly surface
+  type and import errors that need clearing up before a portable can
+  ship.
+
+### Next session, pick this up
+
+1. Pull the latest `developing` branch.
+2. Confirm the toolchain is set up on the host (`rustc`, `cargo`,
+   `pnpm`, `cargo tauri`, JDK 17+ if doing Android, Android SDK + NDK
+   if doing Android). The disk-cleanup + install prompts I gave Owen
+   earlier in the conversation cover the Linux Ubuntu 22.04 path.
+3. `pnpm install` from the repo root, then in order:
+   - `pnpm typecheck` first (cheap; surfaces TS errors fast).
+   - `cargo check --manifest-path apps/server/Cargo.toml` (Rust
+     server side; will be the slowest first time because of the
+     reqwest + mongo + axum + image deps tree).
+   - `pnpm --filter @omnilog/desktop tauri build` for the Linux
+     portable AppImage / deb.
+   - `pnpm --filter @omnilog/mobile tauri android build` if the
+     Android toolchain is in place.
+4. Fix compile errors on a `fix/first-build` branch. Don't push fixes
+   to `developing` directly; open a PR so Owen can review the diff in
+   one place.
+5. Append a LOG.md entry covering what built, what didn't, and what
+   was fixed. The no-em-dash rule still applies.
+
+### Windows portable specifically
+- Producing a Windows portable still needs a Windows host. The Linux
+  build host cannot cross-compile a Tauri Windows binary without
+  significant effort (MinGW, NSIS, etc.). Plan: once the Linux build
+  is green, install the Windows toolchain on this box and rebuild
+  here. Estimated 30 to 60 minutes once Linux side is known-good.
+
+---
+
 ## 2026-06-04: pulled the Linux modularisation; README typography pass
 
 ### Changed
