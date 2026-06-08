@@ -2,22 +2,22 @@
 
 **OmniLog is a self-hosted-first work-journal app.** You run your own server
 and a desktop client connects to it over HTTP(S). The same binary powers both
-self-hosted instances and the (future) official hosted service — billing is
-unlocked by setting Stripe env vars; everything else is identical.
+self-hosted instances and the (future) official hosted service; billing is
+unlocked by setting Stripe env vars, and everything else is identical.
 
-- **Desktop client** — Tauri 2 + React + TypeScript. Three editor modes (TipTap
+- **Desktop client**: Tauri 2 + React + TypeScript. Three editor modes (TipTap
   rich text, Markdown source with live preview, LaTeX source with live KaTeX
   preview). Inline formula popover, KaTeX math everywhere, folder tree with
   drag-free move/rename, multi-server connection switcher in the topbar.
   Builds on **Windows** and **Linux** (Ubuntu LTS).
-- **Mobile client** — Tauri 2 Android target. Same shared business logic and
+- **Mobile client**: Tauri 2 Android target. Same shared business logic and
   UI components as the desktop, with a mobile-tuned layout (single-column,
   slide-out sidebar, bottom-sheet meta pane, touch-friendly controls).
-- **Server** — Rust + Axum + MongoDB (or embedded JSON storage for zero-deps
+- **Server**: Rust + Axum + MongoDB (or embedded JSON storage for zero-deps
   deployments). Multi-user with `owner > admin > user` role hierarchy,
   per-folder sharing, version history with snapshot/restore, notifications
-  inbox. Cross-platform — Windows + Linux + Docker out of the box.
-- **Official hosted service** — same binary, billing enabled when
+  inbox. Cross-platform across Windows, Linux, and Docker out of the box.
+- **Official hosted service**: same binary, billing enabled when
   `STRIPE_SECRET_KEY` is set. Self-hosted instances leave it empty and every
   `/api/billing/*` route 404s, so the client falls through to the free
   experience automatically.
@@ -32,13 +32,13 @@ omnilog/
     shared/           # TypeScript types, zod schemas, API client
     core/             # Framework-agnostic business logic (zustand store,
                       # drafts engine, connection manager, theme). No Tauri
-                      # or React imports — platform deps are injected via
+                      # or React imports; platform deps are injected via
                       # PlatformAdapter interface.
     ui/               # Reusable React components (editor, settings, layout).
                       # Consumed by desktop and mobile via CoreProvider +
                       # PlatformUIProvider contexts.
   .env.example
-  LOG.md              # Engineering log — dated journal of every change
+  LOG.md              # Engineering log: dated journal of every change
   README.md
 ```
 
@@ -145,7 +145,7 @@ CORS_ORIGIN=*              # or a comma-separated allowlist
 ADMIN_USERNAME=admin       # bootstrap owner created on first run
 ADMIN_PASSWORD=admin
 
-# Stripe (official deployment only — leave empty for self-hosted)
+# Stripe (official deployment only; leave empty for self-hosted)
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 STRIPE_PRICE_PRO=
@@ -374,7 +374,7 @@ Beyond the original MVP, this version ships:
 - [x] Notifications inbox (share invites, role changes, billing, etc.)
 
 **Connections**
-- [x] Multi-server client — saved connection list, switcher in the topbar
+- [x] Multi-server client: saved connection list, switcher in the topbar
 - [x] One-click managed local server (no MongoDB required)
 - [x] Self-hosted or official server connections; future paid plans are
       gated behind a `License` (free / pro / team) the official server

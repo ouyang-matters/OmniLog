@@ -4,6 +4,42 @@ A running journal of changes to OmniLog. Newest entries on top.
 
 ---
 
+## 2026-06-04: pulled the Linux modularisation; README typography pass
+
+### Changed
+- Synced this clone with the Linux workstation's modularisation work
+  that landed on `origin/developing` while I was off doing local edits.
+  The shared layer (`packages/core`, `packages/ui`) is now the canonical
+  home for business logic and reusable components; the old paths under
+  `apps/desktop/src/` are kept as thin re-export shims.
+- README had picked up 10 em-dash characters again in the merged
+  version. Re-scrubbed them with colons / semicolons / sentence breaks.
+  No content changes. The no-em-dash rule applies to anything I write,
+  so keeping this enforced.
+
+### Notes
+- My two earlier local commits (sidebar simplification and previous
+  em-dash scrub) were superseded by the force-pushed modularisation on
+  `origin/developing`. They live on `backup-windows-side` branch if we
+  want to cherry-pick anything back. The old `apps/desktop/src/components/`
+  directory is gone, so the sidebar simplification cannot replay
+  in-place; if we want the trimmed sidebar back, it has to be re-applied
+  to `packages/ui/src/Sidebar.tsx` (the new home, currently the full
+  293-line version).
+- Tried to build a Windows portable on this box. Toolchain remains
+  absent on this machine: `cargo`, `rustup`, `pnpm`, and `tauri-cli`
+  are not installed; only `node` is present. A first compile pass would
+  need rustup, MSVC Build Tools (about 6 GB), pnpm, and cargo-tauri,
+  plus 10 to 30 minutes of cold compile across the new server deps
+  (reqwest with rustls, image processing, mongo driver). Given how much
+  has changed across sessions 1 through 6 without a build pass, the
+  first compile will surface type and build errors that need cleaning
+  up. Recommend deferring the first build to the Linux workstation,
+  which has the horsepower to make it painless; produce Windows
+  portables from a Windows host later once the Linux side is green.
+
+---
+
 ## 2026-06-04 — Modularisation + Linux desktop + Android mobile
 
 ### Added
