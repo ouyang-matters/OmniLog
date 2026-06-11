@@ -76,6 +76,7 @@ pub async fn create(
         created_at: now_rfc3339(),
         display_name: input.display_name.filter(|s| !s.trim().is_empty()),
         avatar_data_url: None,
+        email: input.email.filter(|s| !s.trim().is_empty()),
     };
     state.storage.create_user(&user).await?;
     Ok(Json(PublicUser::from(&user)))
@@ -104,6 +105,14 @@ pub async fn update(
         ));
     }
     let mut user = state.storage.get_user(&id).await?.ok_or(AppError::NotFound)?;
+
+    // Superusers (env-listed) cannot have their role lowered or be otherwise
+    // restricted through this endpoint; their entitlement is fixed by config.
+    // We still allow profile fields (display name, password reset by the
+    // owner of that account) through the rest of this function.
+    if state.config.is_superuser(&user.username) && !state.config.is_superuser(&auth.username) {
+        return Err(AppError::Unauthorized);
+    }
 
     // Caller must outrank the target (unless it's themselves and they're owner).
     let caller_rank = role_rank(&auth.role);
@@ -151,6 +160,11 @@ pub async fn update(
         user.display_name = if trimmed.is_empty() { None } else { Some(trimmed.to_string()) };
     }
 
+    if let Some(email) = input.email {
+        let trimmed = email.trim();
+        user.email = if trimmed.is_empty() { None } else { Some(trimmed.to_string()) };
+    }
+
     state.storage.replace_user(&user).await?;
 
     if role_changed || password_changed {
@@ -190,6 +204,11 @@ pub async fn delete(
         return Err(AppError::BadRequest("you cannot delete your own account".into()));
     }
     let user = state.storage.get_user(&id).await?.ok_or(AppError::NotFound)?;
+    if state.config.is_superuser(&user.username) {
+        return Err(AppError::BadRequest(
+            "superusers cannot be deleted through the API; remove the SUPERUSER_USERNAMES entry and restart the server instead".into(),
+        ));
+    }
     if role_rank(&user.role) >= role_rank(&auth.role) {
         return Err(AppError::Unauthorized);
     }

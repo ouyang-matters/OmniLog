@@ -66,9 +66,16 @@ pub async fn get_license(
     Extension(auth): Extension<AuthUser>,
 ) -> AppResult<Json<License>> {
     require_billing(&state)?;
+    // Superusers (env-listed) are permanently unlimited regardless of
+    // any stored row or Stripe state. Checked before the bootstrap
+    // shortcut so an env-superuser can also use the static API token
+    // and still get the unlimited license response.
+    if state.config.is_superuser(&auth.username) {
+        return Ok(Json(License::superuser_unlimited(&auth.id, &now_rfc3339())));
+    }
     if auth.id == DEFAULT_USER_ID {
-        // Bootstrap principal isn't a real user — no Stripe customer ever
-        // gets created for them; return an implicit free license.
+        // Bootstrap principal isn't a real user; no Stripe customer is
+        // ever created for them. Return an implicit free license.
         return Ok(Json(License::default_free(&auth.id, &now_rfc3339())));
     }
     Ok(Json(ensure_license_row(&state, &auth.id).await?))
@@ -96,9 +103,14 @@ pub async fn checkout(
     Json(input): Json<CheckoutInput>,
 ) -> AppResult<Json<CheckoutResponse>> {
     require_billing(&state)?;
+    if state.config.is_superuser(&auth.username) {
+        return Err(AppError::BadRequest(
+            "this account is permanently unlimited and does not need a subscription".into(),
+        ));
+    }
     if auth.id == DEFAULT_USER_ID {
         return Err(AppError::BadRequest(
-            "the bootstrap admin doesn't support subscriptions — create a real user first".into(),
+            "the bootstrap admin does not support subscriptions; create a real user first".into(),
         ));
     }
     let price_id = state

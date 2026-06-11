@@ -123,6 +123,8 @@ export interface PublicUser {
   displayName?: string;
   /** Inline `data:image/...;base64,…` URL. Capped server-side. */
   avatarDataUrl?: string;
+  /** Optional contact email. Display-only on the client side. */
+  email?: string;
 }
 
 export interface LoginResponse {

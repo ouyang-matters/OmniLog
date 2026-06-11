@@ -175,7 +175,7 @@ export class ApiClient {
     return this.request<PublicUser>(API_ROUTES.me, { method: "GET" });
   }
 
-  updateMe(input: { displayName?: string; avatarDataUrl?: string }): Promise<PublicUser> {
+  updateMe(input: { displayName?: string; avatarDataUrl?: string; email?: string }): Promise<PublicUser> {
     return this.request<PublicUser>(API_ROUTES.me, {
       method: "PATCH",
       body: JSON.stringify(input),
@@ -193,7 +193,7 @@ export class ApiClient {
     return this.request<PublicUser[]>(API_ROUTES.users, { method: "GET" });
   }
 
-  createUser(input: { username: string; password: string; role?: Role; displayName?: string }): Promise<PublicUser> {
+  createUser(input: { username: string; password: string; role?: Role; displayName?: string; email?: string }): Promise<PublicUser> {
     return this.request<PublicUser>(API_ROUTES.users, {
       method: "POST",
       body: JSON.stringify(input),
@@ -202,7 +202,7 @@ export class ApiClient {
 
   updateUser(
     id: string,
-    input: { role?: Role; password?: string; displayName?: string },
+    input: { role?: Role; password?: string; displayName?: string; email?: string },
   ): Promise<PublicUser> {
     return this.request<PublicUser>(API_ROUTES.user(id), {
       method: "PATCH",

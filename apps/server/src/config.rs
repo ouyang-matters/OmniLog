@@ -28,6 +28,18 @@ pub struct Config {
     /// Base URL clients are redirected back to after Stripe Checkout (success
     /// and cancel both bounce here). Defaults to the OmniLog API origin.
     pub billing_return_url: String,
+
+    /// Comma-separated list of superuser usernames. Anyone whose login
+    /// username appears here is treated as a permanently-unlimited account:
+    /// the billing layer reports an unexpiring `team` license for them and
+    /// never charges Stripe, even on an official deployment. The first
+    /// superuser in the list is the one the server seeds at first boot
+    /// (with `superuser_email`, `superuser_display_name`, `superuser_password`).
+    /// Empty means no superusers configured.
+    pub superuser_usernames: Vec<String>,
+    pub superuser_email: String,
+    pub superuser_display_name: String,
+    pub superuser_password: String,
 }
 
 impl Config {
@@ -50,6 +62,15 @@ impl Config {
         let stripe_price_team = env_or("STRIPE_PRICE_TEAM", "");
         let billing_return_url = env_or("BILLING_RETURN_URL", "");
 
+        let superuser_usernames: Vec<String> = env_or("SUPERUSER_USERNAMES", "")
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+        let superuser_email = env_or("SUPERUSER_EMAIL", "");
+        let superuser_display_name = env_or("SUPERUSER_DISPLAY_NAME", "");
+        let superuser_password = env_or("SUPERUSER_PASSWORD", "");
+
         Ok(Self {
             port,
             host,
@@ -65,7 +86,17 @@ impl Config {
             stripe_price_pro,
             stripe_price_team,
             billing_return_url,
+            superuser_usernames,
+            superuser_email,
+            superuser_display_name,
+            superuser_password,
         })
+    }
+
+    /// True when `username` is on the superuser list. Case-sensitive match
+    /// so we don't accidentally match similar-looking usernames.
+    pub fn is_superuser(&self, username: &str) -> bool {
+        self.superuser_usernames.iter().any(|u| u == username)
     }
 
     /// True when this instance is configured to act as an official, paid

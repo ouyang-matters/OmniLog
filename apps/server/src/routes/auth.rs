@@ -56,6 +56,7 @@ pub async fn me(
             created_at: String::new(),
             display_name: None,
             avatar_data_url: None,
+            email: None,
         }))
     }
 }
@@ -79,6 +80,10 @@ pub async fn update_me(
     if let Some(name) = input.display_name {
         let trimmed = name.trim();
         user.display_name = if trimmed.is_empty() { None } else { Some(trimmed.to_string()) };
+    }
+    if let Some(email) = input.email {
+        let trimmed = email.trim();
+        user.email = if trimmed.is_empty() { None } else { Some(trimmed.to_string()) };
     }
     if let Some(av) = input.avatar_data_url {
         if av.is_empty() {

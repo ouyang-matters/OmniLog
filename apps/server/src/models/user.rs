@@ -18,9 +18,14 @@ pub struct User {
     pub display_name: Option<String>,
     /// Avatar as an inline `data:image/...;base64,…` URL. Capped at ~256 KB
     /// post-encoding by the upload endpoint. Stored inline so it's served with
-    /// the user record — fine for small personal deployments.
+    /// the user record (fine for small personal deployments).
     #[serde(default)]
     pub avatar_data_url: Option<String>,
+    /// Optional contact email. Display-only on the client side; the server
+    /// does not currently send email itself. Useful for account recovery
+    /// flows and for the operator to identify accounts at a glance.
+    #[serde(default)]
+    pub email: Option<String>,
 }
 
 impl User {
@@ -41,6 +46,8 @@ pub struct PublicUser {
     pub display_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avatar_data_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub email: Option<String>,
 }
 
 impl From<&User> for PublicUser {
@@ -52,6 +59,7 @@ impl From<&User> for PublicUser {
             created_at: u.created_at.clone(),
             display_name: u.display_name.clone(),
             avatar_data_url: u.avatar_data_url.clone(),
+            email: u.email.clone(),
         }
     }
 }
@@ -70,6 +78,8 @@ pub struct CreateUserInput {
     pub role: Option<String>,
     #[serde(default)]
     pub display_name: Option<String>,
+    #[serde(default)]
+    pub email: Option<String>,
 }
 
 /// Admin-side patch of another user.
@@ -82,6 +92,8 @@ pub struct UpdateUserInput {
     pub password: Option<String>,
     /// Optional display-name override (admins/owner editing another user).
     pub display_name: Option<String>,
+    /// Optional email override.
+    pub email: Option<String>,
 }
 
 /// Self-service profile update — anything a user is allowed to change about
@@ -93,6 +105,8 @@ pub struct UpdateMeInput {
     /// Set to `Some("")` to clear the avatar; `Some(data_url)` to set it;
     /// absent to leave unchanged.
     pub avatar_data_url: Option<String>,
+    /// Set to `Some("")` to clear, `Some("...")` to set, absent to leave.
+    pub email: Option<String>,
 }
 
 /// Self-service password change. The bootstrap API_TOKEN principal has no

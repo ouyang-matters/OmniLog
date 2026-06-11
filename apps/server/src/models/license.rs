@@ -60,6 +60,27 @@ impl License {
         self.features = features_for_plan(plan);
         self
     }
+
+    /// A permanently-unlimited license, returned for accounts listed in
+    /// `SUPERUSER_USERNAMES`. Status is "active", no period end (never
+    /// expires), all `team` features unlocked, plus a "superuser" tag
+    /// the client can match on. Carries no Stripe customer or subscription
+    /// id; superusers are never billed.
+    pub fn superuser_unlimited(user_id: &str, now: &str) -> Self {
+        let mut features = features_for_plan("team");
+        features.push("superuser".to_string());
+        features.push("unlimited".to_string());
+        License {
+            user_id: user_id.to_string(),
+            plan: "team".to_string(),
+            status: "active".to_string(),
+            current_period_end: None,
+            stripe_customer_id: None,
+            subscription_id: None,
+            features,
+            updated_at: now.to_string(),
+        }
+    }
 }
 
 /// Plan → feature flags. Kept here (not in Stripe) so the client doesn't have

@@ -58,8 +58,10 @@ async fn main() -> Result<()> {
         Arc::new(MongoStorage::connect(&config).await?)
     };
 
-    // Create the initial admin user on first run.
+    // Create the initial admin user on first run, then seed any superusers
+    // declared in env vars (always runs; idempotent on existing rows).
     bootstrap_admin(storage.as_ref(), &config).await?;
+    bootstrap_superusers(storage.as_ref(), &config).await?;
 
     let addr = format!("{}:{}", config.host, config.port);
     let state = AppState::new(config, storage);
@@ -88,9 +90,66 @@ async fn bootstrap_admin(storage: &dyn Storage, config: &Config) -> Result<()> {
             created_at: now_rfc3339(),
             display_name: None,
             avatar_data_url: None,
+            email: None,
         };
         storage.create_user(&user).await?;
         tracing::info!(username = %config.admin_username, "created initial owner user");
+    }
+    Ok(())
+}
+
+/// Ensure every username listed in `SUPERUSER_USERNAMES` has a corresponding
+/// stored user row. Only creates rows that don't already exist; never edits
+/// passwords, roles, or profile fields on existing accounts. The first
+/// superuser in the list gets the configured email + display name + password
+/// at creation time; later superusers (if any) get just the username and a
+/// placeholder password that must be reset before login.
+///
+/// All personal data is sourced from env vars so the repository never
+/// contains identifying values.
+async fn bootstrap_superusers(storage: &dyn Storage, config: &Config) -> Result<()> {
+    if config.superuser_usernames.is_empty() {
+        return Ok(());
+    }
+    for (idx, username) in config.superuser_usernames.iter().enumerate() {
+        if storage.get_user_by_username(username).await?.is_some() {
+            tracing::debug!(username = %username, "superuser already present");
+            continue;
+        }
+        let is_first = idx == 0;
+        let password = if is_first && !config.superuser_password.is_empty() {
+            config.superuser_password.clone()
+        } else {
+            // Random placeholder; owner can reset via PATCH /api/users/:id.
+            // Picked long enough that brute force is infeasible.
+            let mut bytes = [0u8; 24];
+            rand::Rng::fill(&mut rand::thread_rng(), &mut bytes);
+            hex::encode(bytes)
+        };
+        let user = User {
+            id: crate::models::new_id(),
+            username: username.clone(),
+            password_hash: auth::hash_password(&password)
+                .map_err(|e| anyhow::anyhow!(e.to_string()))?,
+            role: "owner".to_string(),
+            created_at: now_rfc3339(),
+            display_name: if is_first && !config.superuser_display_name.is_empty() {
+                Some(config.superuser_display_name.clone())
+            } else {
+                None
+            },
+            avatar_data_url: None,
+            email: if is_first && !config.superuser_email.is_empty() {
+                Some(config.superuser_email.clone())
+            } else {
+                None
+            },
+        };
+        storage.create_user(&user).await?;
+        tracing::info!(
+            username = %username,
+            "seeded superuser (permanently unlimited license)"
+        );
     }
     Ok(())
 }

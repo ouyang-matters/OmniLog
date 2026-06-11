@@ -4,6 +4,55 @@ A running journal of changes to OmniLog. Newest entries on top.
 
 ---
 
+## 2026-06-04: superuser support + user email field
+
+### Added
+- `Config` reads four new env vars: `SUPERUSER_USERNAMES` (comma-
+  separated), `SUPERUSER_EMAIL`, `SUPERUSER_DISPLAY_NAME`,
+  `SUPERUSER_PASSWORD`. `Config::is_superuser(username)` answers the
+  hot check used by billing and user-management endpoints.
+- `User` gets an optional `email` field. Mirrored on `PublicUser`,
+  `CreateUserInput`, `UpdateUserInput`, `UpdateMeInput`, and the
+  TypeScript `PublicUser` plus the api-client method signatures.
+- `License::superuser_unlimited(user_id, now)` returns an
+  unexpiring `team`-tier license with extra `superuser` and
+  `unlimited` feature flags so the client can switch on them.
+- `bootstrap_superusers` runs after `bootstrap_admin` on every
+  server start. Idempotent: only creates rows that don't already
+  exist. The first username in the list gets the email + display
+  name + password from env vars at seed time; later names get a
+  random placeholder password (must be reset by the owner before
+  login).
+- `GET /api/auth/license` short-circuits to the unlimited license
+  whenever the caller is on the superuser list, regardless of
+  Stripe state.
+- `POST /api/billing/checkout` refuses to start a checkout for a
+  superuser (no subscription needed).
+- `PATCH /api/users/:id` refuses to edit a superuser unless the
+  caller is also a superuser. `DELETE /api/users/:id` refuses to
+  delete a superuser at all; the operator removes the entry from
+  `SUPERUSER_USERNAMES` and restarts the server instead.
+
+### Notes
+- **Personal data is NOT in the repository.** Username, email,
+  display name, and password for any superuser live in env vars on
+  the deployment host. `.env.example` shows the variable names with
+  empty values; the operator fills them in locally.
+- This change was written but not compiled (toolchain still
+  missing on the Windows dev box). Compile pass will happen on the
+  Linux workstation along with the existing backlog from sessions
+  1 through 6 and the modularisation merge.
+- Migration concern: existing `User` rows on a populated database
+  won't have the `email` field. `#[serde(default)]` on the field
+  means BSON / JSON deserialisation will fill `None` for them, so
+  no explicit migration is required.
+- Privacy aside: the operator's commit-author email is already in
+  git history (set globally), but the API surface, code, and docs
+  carry no PII. Searching the public repo for the seeded username
+  will turn up nothing.
+
+---
+
 ## 2026-06-04: handoff to a different device; defer first compile
 
 ### Notes
