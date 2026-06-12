@@ -4,6 +4,38 @@ A running journal of changes to OmniLog. Newest entries on top.
 
 ---
 
+## 2026-06-04: editor pane padding + visible source-mode borders
+
+### Changed
+- `.editor-pane` gets `scrollbar-gutter: stable`. On Windows the
+  overlay scrollbar was sitting on top of the right edge of the
+  source-mode textarea / preview, eating the 1 px border that
+  Owen expected to see.
+- `.editor-root` padding bumped from `18px 28px 80px` to
+  `36px 32px 96px` so the title and content have noticeably more
+  top breathing room and the sides have a touch more.
+- `.title-input` margin-top from 6 to 14 (more gap below the
+  mode switcher).
+- `.toolbar` gets `margin-bottom: 14px` so the title input does
+  not sit right up against the toolbar's bottom border.
+- `.source-split` gets `margin-top: 18px` so the markdown / latex
+  editor pair drops below the title input with breathing room.
+- `.source-input` and `.source-preview` border thickness raised
+  from 1 px to 1.5 px so the frame reads clearly on the light
+  theme; was washing into the page background.
+
+### Notes
+- These are CSS-only adjustments; no markup or component logic
+  changed. Should rebuild fine on the Linux workstation alongside
+  the other unverified backlog.
+- The borders looked "missing" because of two compounding causes:
+  the light-theme 1 px border was close to invisible, and the
+  Windows scroll gutter was overlapping the right border in the
+  scrollable editor pane. `scrollbar-gutter: stable` plus the
+  thicker border fixes both.
+
+---
+
 ## 2026-06-04: superuser support + user email field
 
 ### Added
